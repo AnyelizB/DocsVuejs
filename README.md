@@ -352,11 +352,12 @@ Una aplicación Vue consiste en una instancia de la raíz Vue creada con `new Vu
     
 
         Root Instance
-    ├── blog
-    │   ├── migrations
-    │   ├── static
-    │   └── templates
-    └── mysite
+        TodoList
+    ├── TodoItem
+    │   ├── DeleteTodoButton
+    │   └── EditTodoButton
+    │   
+    └── TodoListFooter
 
 
    TodoList
