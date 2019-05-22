@@ -426,3 +426,83 @@ data: {
 
 La única excepción a esto es el uso de `Object.freeze()`, que evita que se modifiquen las propiedades existentes, lo que también significa que el sistema de reactividad no puede rastrear los cambios. 
 
+JS
+
+```
+var obj = {
+  foo: 'bar'
+}
+
+Object.freeze(obj)
+
+new Vue({
+  el: '#app',
+  data: obj
+})
+
+```
+
+HTML
+
+```
+<div id="app">
+  <p>{{ foo }}</p>
+  <!-- this will no longer update `foo`! -->
+  <button v-on:click="foo = 'baz'">Change it</button>
+</div>
+
+```
+
+La instancia de Vue muestra un numero de exitosas propiedades de instancia y metodos.
+Hay un prefijo con `$` para diferenciarlos desde las propiedades definidas.
+
+
+JS
+
+```
+
+var data = { a: 1 }
+var vm = new Vue({
+  el: '#example',
+  data: data
+})
+
+vm.$data === data // => true
+vm.$el === document.getElementById('example') // => true
+
+// $watch es un metodo de la instancia
+vm.$watch('a', function (newValue, oldValue) {
+  // Este callback será llamado cuando cuando `vm.a` cambie
+})
+
+```
+
+## Ciclos de vida de la instancia
+
+`created` hook puede ser creada para correr código despues de una instancia creada: 
+
+JS
+
+```
+new Vue({
+  data: {
+    a: 1
+  },
+  created: function () {
+    // `this` points to the vm instance
+    console.log('a is: ' + this.a)
+  }
+})
+
+
+```
+
+Resultado:
+
+```
+"a is: 1"
+
+```
+
+Existen tambien otros hooks las cuales pueden ser llamadas en estados de ciclos de vida de la instancia, como lo son `mounted` , `update`  y `destroyed` .
+
