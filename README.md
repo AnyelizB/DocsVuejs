@@ -79,7 +79,7 @@ Del ejemplo anterior nos referimos básicamente a: " mantener el atributo `title
 
 Si colocamos en la consola ` app2.message = 'some new message' ` observaremos la actualización del atributo `title`
 
-### Condicionales y lazos
+### Condicionales y lazos ###
 
 ## Directiva v-if
 
@@ -329,6 +329,69 @@ Resultado
 
 ```
 
-## La instancia Vue
+## La instancia Vue ## 
+
+## Creando una instancia Vue
+
+Cada aplicación Vue comienza creando una nueva instancia de Vue con la función Vue:
+
+JS
+
+```
+var vm = new Vue({
+  // options
+})
+
+```
+El diseño de Vue esta parcialmente relacionado con MVVM (Modelo- vista- vista modelo). Suele usarse la variable `vm` (ViewModel) para referirnos a nuestra instancia Vue.
+
+Cuando se crea la instancia de Vue, se pasa a un objeto.
+Una aplicación Vue consiste en una instancia de la raíz Vue creada con `new Vue`, organizado opcionalmente en un árbol de componentes anidados y reutilizables. 
 
 
+    Root Instance
+└─ TodoList
+   ├─ TodoItem
+   │  ├─ DeleteTodoButton
+   │  └─ EditTodoButton
+   └─ TodoListFooter
+      ├─ ClearTodosButton
+      └─ TodoListStatistics
+
+
+## Data y Metodos
+
+Cuando se crea una instancia de Vue, este añade todas las propiedades encontradas en su objeto de `data` al sistema de reactividad de Vue. Cuando los valores de esas propiedades cambian, la vista "reaccionará", actualizándose para que coincida con los nuevos valores. 
+
+JS
+
+```
+// Our data object
+var data = { a: 1 }
+
+// The object is added to a Vue instance
+var vm = new Vue({
+  data: data
+})
+
+// Getting the property on the instance
+// returns the one from the original data
+vm.a == data.a // => true
+
+// Setting the property on the instance
+// also affects the original data
+vm.a = 2
+data.a // => 2
+
+// ... and vice-versa
+data.a = 3
+vm.a // => 3
+
+```
+
+
+Cuando estos datos cambien, la vista se volverá a mostrar. Debe tenerse en cuenta que las propiedades en los datos sólo son reactivas si existían cuando se creó la instancia. Esto significa que si agrega una nueva propiedad, como:
+
+Entonces los cambios a b no activarán ninguna actualización de las vistas. Si usted sabe que necesitará una propiedad más tarde, pero comienza vacía o inexistente, tendrá que establecer algún valor inicial. Por ejemplo:
+
+La única excepción a esto es el uso de Object. freeze(), que evita que se modifiquen las propiedades existentes, lo que también significa que el sistema de reactividad no puede rastrear los cambios. 
