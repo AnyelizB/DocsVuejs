@@ -390,8 +390,36 @@ vm.a // => 3
 ```
 
 
-Cuando estos datos cambien, la vista se volverá a mostrar. Debe tenerse en cuenta que las propiedades en los datos sólo son reactivas si existían cuando se creó la instancia. Esto significa que si agrega una nueva propiedad, como:
+Cuando estos datos cambien, la vista se volverá a mostrar. Debe tenerse en cuenta que las propiedades en la `data` sólo son reactivas si existían cuando se creó la instancia. Esto significa que si agregamos una nueva propiedad, como:
 
-Entonces los cambios a b no activarán ninguna actualización de las vistas. Si usted sabe que necesitará una propiedad más tarde, pero comienza vacía o inexistente, tendrá que establecer algún valor inicial. Por ejemplo:
+JS
 
-La única excepción a esto es el uso de Object. freeze(), que evita que se modifiquen las propiedades existentes, lo que también significa que el sistema de reactividad no puede rastrear los cambios. 
+```
+vm.b = 'hi'
+
+```
+
+
+Entonces los cambios a `b` no activarán ninguna actualización de las vistas. Si no se conoce que se necesitará una propiedad más adelante, pero comienza vacía o inexistente, tendrá que establecer algún valor inicial. Por ejemplo:
+
+JS
+
+```
+data: {
+  newTodoText: '',
+  visitCount: 0,
+  hideCompletedTodos: false,
+  todos: [],
+  error: null
+}
+
+```
+
+La única excepción a esto es el uso de `Object.freeze()`, que evita que se modifiquen las propiedades existentes, lo que también significa que el sistema de reactividad no puede rastrear los cambios. 
+
+    djangogirls
+    ├── blog
+    │   ├── migrations
+    │   ├── static
+    │   └── templates
+    └── mysite
