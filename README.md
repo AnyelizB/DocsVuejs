@@ -18,7 +18,7 @@ Es un framework progresivo para construir interfaces de usuarios. Vue está dise
 <script src="https://cdn.jsdelivr.net/npm/vue"></script>
 
 ```
-#Renderización declarativa
+##Renderización declarativa
 
 La sintaxis sería lo siguiente:
 
@@ -71,7 +71,7 @@ Hover your mouse over me for a few seconds
     to see my dynamically bound title!
 ```
 
-#Directiva
+##Directiva
 
 El atributo `v-bind` es referida a una directiva. Estas directivas son prefijos con `v-` para indicar que provienen de atributos de Vue.
 
@@ -81,7 +81,7 @@ Si colocamos en la consola ` app2.message = 'some new message' ` observaremos la
 
 ##Condicionales y lazos##
 
-#Directiva v-if
+##Directiva v-if
 HTML 
 
 ```
@@ -112,7 +112,7 @@ Si en su lugar se coloca `app3.seen = false` en la terminal el mensaje desaparec
 Demostrando que podemos enlazar datos no sólo con texto y atributos sino tambien con la estructura del DOM. Además, Vue también proporciona un potente sistema de efectos de transición que se puede aplicar automáticamente cuando los elementos son insertados/actualizados/quitados por Vue. 
 
 
-#Directiva v-for
+##Directiva v-for
 
 Este tipo de directivas puede ser utilizada para mostrar una lista de items proveniente de un arreglo:
 
