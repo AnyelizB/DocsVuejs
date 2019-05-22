@@ -358,6 +358,8 @@ Una aplicación Vue consiste en una instancia de la raíz Vue creada con `new Vu
     │   └── EditTodoButton
     │   
     └── TodoListFooter
+        ├── ClearTodosButton
+        └── TodoListStatistics
 
 
    TodoList
