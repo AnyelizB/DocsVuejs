@@ -359,18 +359,8 @@ Una aplicación Vue consiste en una instancia de la raíz Vue creada con `new Vu
     │   
     └── TodoListFooter
         ├── ClearTodosButton
-        └── TodoListStatistics
-
-
-   TodoList
-   ├── TodoItem
-   │  ├── DeleteTodoButton
-   │  └── EditTodoButton
-   └── TodoListFooter
-      ├── ClearTodosButton
-      └── TodoListStatistics
-
-
+        └── TodoListStatistics 
+        
 ## Data y Metodos
  
 Cuando se crea una instancia de Vue, este añade todas las propiedades encontradas en su objeto de `data` al sistema de reactividad de Vue. Cuando los valores de esas propiedades cambian, la vista "reaccionará", actualizándose para que coincida con los nuevos valores. 
