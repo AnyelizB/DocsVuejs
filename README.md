@@ -349,14 +349,23 @@ Cuando se crea la instancia de Vue, se pasa a un objeto.
 Una aplicación Vue consiste en una instancia de la raíz Vue creada con `new Vue`, organizado opcionalmente en un árbol de componentes anidados y reutilizables. 
 
 
-    Root Instance
-└─ TodoList
-   ├─ TodoItem
-   │  ├─ DeleteTodoButton
-   │  └─ EditTodoButton
-   └─ TodoListFooter
-      ├─ ClearTodosButton
-      └─ TodoListStatistics
+    
+
+        Root Instance
+    ├── blog
+    │   ├── migrations
+    │   ├── static
+    │   └── templates
+    └── mysite
+
+
+   TodoList
+   ├── TodoItem
+   │  ├── DeleteTodoButton
+   │  └── EditTodoButton
+   └── TodoListFooter
+      ├── ClearTodosButton
+      └── TodoListStatistics
 
 
 ## Data y Metodos
@@ -417,9 +426,3 @@ data: {
 
 La única excepción a esto es el uso de `Object.freeze()`, que evita que se modifiquen las propiedades existentes, lo que también significa que el sistema de reactividad no puede rastrear los cambios. 
 
-    djangogirls
-    ├── blog
-    │   ├── migrations
-    │   ├── static
-    │   └── templates
-    └── mysite
