@@ -1585,3 +1585,203 @@ requireComponent.keys().forEach(fileName => {
 
 
 ```
+
+***Recordar que el registro global debe tomar lugar antes de que la raíz de la instancia Vue sea creada (new Vue)***
+
+## Caso Prop (camenCase vs kebab-case) ##
+
+Los nombres de atributos HTML no distinguen entre mayúsculas y minúsculas, por lo que los navegadores interpretan los caracteres en mayúsculas como minúsculas. Esto significa que cuando usas plantillas en DOM, los nombres de prop `camelCased` necesitan usar sus equivalentes en `kebab-case` (delimitados por guiones): 
+
+
+JS 
+
+
+```
+
+Vue.component('blog-post',{
+//camelCase in Javascript 
+
+props: ['postTitle'],
+template:'<h3>{{ postTitle }}</h3>'
+
+
+})
+
+```
+
+HTML
+
+```
+<blog-post post-title= "hello!"></blog-post>
+
+```
+
+Si se esta usando plantillas string, estas limitaciones no aplican
+
+### Tipo de Prop
+
+**Arreglos de strings:**
+
+
+JS
+
+```
+props: ['title', 'likes', 'isPublished', 'commentIds', 'author']
+
+```
+
+Se puede listar el props como un obejto, donde los nombre de las propiedades y valores, cuentan como nombres prop y tipos, respectivamente:
+
+JS
+
+```
+
+props: {
+  title: String,
+  likes: Number,
+  isPublished: Boolean,
+  commentIds: Array,
+  author: Object,
+  callback: Function,
+  contactsPromise: Promise // or any other constructor
+}
+
+
+```
+
+## Pasando Props estáticos y dinámicos
+
+**Pasando props a valores estáticos:**
+
+HTML
+
+```
+<blog-post title="My journey with Vue"></blog-post>
+
+```
+
+**Props asignados dinamicamente**
+
+
+HTML
+
+```
+<blog-post title="My journey with Vue"></blog-post>
+
+
+<!-- Dynamically assign the value of a complex expression -->
+<blog-post
+  v-bind:title="post.title + ' by ' + post.author.name"
+></blog-post>
+
+```
+
+ ### Pasando un número o number
+
+HTML
+
+ ```
+
+<!-- Even though `42` is static, we need v-bind to tell Vue that -->
+<!-- this is a JavaScript expression rather than a string.       -->
+<blog-post v-bind:likes="42"></blog-post>
+
+<!-- Dynamically assign to the value of a variable. -->
+<blog-post v-bind:likes="post.likes"></blog-post>
+
+ ```
+
+ ### Pasando un booleano o Boolean
+
+HTML
+
+ ```
+<!-- Including the prop with no value will imply `true`. -->
+<blog-post is-published></blog-post>
+
+<!-- Even though `false` is static, we need v-bind to tell Vue that -->
+<!-- this is a JavaScript expression rather than a string.          -->
+<blog-post v-bind:is-published="false"></blog-post>
+
+<!-- Dynamically assign to the value of a variable. -->
+<blog-post v-bind:is-published="post.isPublished"></blog-post>
+
+ ```
+
+
+### Pasando un Arreglo
+
+ ```
+
+<!-- Even though the array is static, we need v-bind to tell Vue that -->
+<!-- this is a JavaScript expression rather than a string.            -->
+<blog-post v-bind:comment-ids="[234, 266, 273]"></blog-post>
+
+<!-- Dynamically assign to the value of a variable. -->
+<blog-post v-bind:comment-ids="post.commentIds"></blog-post>
+
+ ```
+
+
+### Pasando un Objeto
+
+HTML
+
+```
+<!-- Even though the object is static, we need v-bind to tell Vue that -->
+<!-- this is a JavaScript expression rather than a string.             -->
+<blog-post
+  v-bind:author="{
+    name: 'Veronica',
+    company: 'Veridian Dynamics'
+  }"
+></blog-post>
+
+<!-- Dynamically assign to the value of a variable. -->
+<blog-post v-bind:author="post.author"></blog-post>
+
+```
+
+### Pasando las propiedadesde unn objeto
+
+Si se desea pasar todas las propiedades de un objeto como props, se puede usar `v-bind` sin el argumento (v-bind en lugar de v-bind: prop-name). Por ejemplo, dado un objeto post:
+
+JS
+
+
+```
+post: {
+  id: 1,
+  title: 'My Journey with Vue'
+}
+
+
+```
+
+La siguiente plantilla sería:
+
+HTML
+
+```
+<blog-post v-bind="post"></blog-post>
+
+```
+
+Será equivalente a: 
+
+HTML
+
+```
+
+<blog-post
+  v-bind:id="post.id"
+  v-bind:title="post.title"
+></blog-post>
+
+```
+
+### Flujo de datos unidireccional
+
+Todos los accesorios forman un vínculo unidireccional entre la propiedad hijo y la propiedad padre: cuando la propiedad padre se actualiza, fluirá hacia el hijo pero no al revés. Esto evita que los componentes hijo muten accidentalmente a el estado padre, lo que puede hacer que el flujo de datos de su aplicación sea más difícil de entender.
+
+
