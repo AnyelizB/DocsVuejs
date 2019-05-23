@@ -1,7 +1,7 @@
 
 ## VUE JS ##
 
-Es un framework progresivo para construir interfaces de usuarios. Vue está diseñado desde cero para ser adoptado de forma incremental, es fácil de recoger e integrar con otras librerias o proyetos existentes.
+Es un framework progresivo para construir interfaces de usuarios. Vue está diseñado desde cero para ser adoptado de forma incremental, es fácil de recoger e integrar con otras librerias o proyectos existentes.
 ![Nota]: es recomendable el conocimiento en HTML, CSS Y Javascript 
 
 
@@ -737,3 +737,582 @@ HTML `v-on` (abreviado)
 Pueden parecer un poco diferente al HTML normal, pero `:` y `@` son caracteres válidos para nombres de atributos y todos los navegadores compatibles con Vue pueden analizarlos correctamente. Además, no aparecen en el marcado final renderizado. La sintaxis abreviada es totalmente opcional.
 
 
+### Propiedades Calculadas y Observadores
+
+## Propiedades calculadas
+
+Las expresiones en plantillas son muy convenientes, pero ellos son concebidas por operaciones simples.
+
+HTML 
+
+```
+<div id="example">
+  {{ message.split('').reverse().join('') }}
+</div>
+
+```
+### Ejemplo básico
+
+HTML
+
+```
+<div id="example">
+  <p>Original message: "{{ message }}"</p>
+  <p>Computed reversed message: "{{ reversedMessage }}"</p>
+</div>
+
+```
+
+JS
+
+```
+
+var vm = new Vue ({
+  el: 'example',
+  data: {
+     
+     message: 'Hola Mundo'
+
+  },
+  computed:{
+    //a compured getter
+
+    reservedMessage: function (){
+
+        // this -> point to the vm intance
+
+        return this.message.split('').reverse().join('')
+
+    }
+  }
+
+}) 
+
+```
+Resultado: 
+
+```
+Original message: " Hola Mundo "
+Computed reversed message: " odnuM aloH "
+
+```
+
+Aquí hemos declarado la propiedad calculada `reversedMessage` . La función será usada como la función getter para la propiedad `vm.reversedMessage` :
+
+JS
+
+```
+console.log(vm.reversedMessage) // => 'odnuM aloH'
+vm.message = 'Adios'
+console.log(vm.reversedMessage) // => 'soidA'
+
+```
+
+El valor de `vm.reversedMessage` es simpre dependiente del valor de `vm.message`
+
+### Caché calculado vs Método
+
+Se puede notar que se puede alcanzar el mismo resultado al invocar el método en la expresión:
+
+HTML
+
+```
+<p> Reversed message: " {{ reverseMessage() }} " </p>
+
+```
+
+JS  
+
+```
+// in component
+
+methods: {
+
+  reverseMessage: function(){
+
+    return this.message.split('').reverve().join('')
+
+  }
+
+}
+
+```
+
+En el lugar de la propiedad calculada, nosotros podemos definir la misma función como un método. La diferencia es que las propiedades calculadas es basada en el caché de sus dependencias reactivas.
+
+Una propiedad calculada se reevalua solamente cuando algunas de sus dependencias reactivas han cambiado.
+Esto significa que mientras `message` no cambié, los accesos multiples a `reversedMessage` de la propiedad calculada returnará inmediatamente al resultado previamente calculado sin tener que correr la función otra vez.
+
+La siguiente propiedad calculada nunca actualizará, porque `Date.now()` esta no es una dependencia reactiva.
+
+JS
+
+```
+compured:{
+  now: function (){
+    return Date.now()
+  }
+}
+
+```
+
+¿Por que necesitamos cachear?
+
+Imaginemos que tenemos una costosa propiedad computarizada `A`, que requiere hacer un lazo a través de una enorme matriz y hacer muchos cálculos. Entonces podemos tener otras propiedads calculadas que a su vez depende de `A`. Sin cachear estaríamos ejecutando el getter de `A` muchas mas veces de las necesarias , en los casos que no se requieran almacenar caché, se utilizará un método en su lugar.
+
+### Calculo vs Propiedades Observadas
+
+Vue proporciona una forma más genérica de observar y reaccionar a los cambios de datos en una instancia de Vue: las propiedades del reloj. 
+
+Cuando se tiene algunos datos que necesitan ser cambiados en base a otros datos, es tentador abusar de `watch`- especialmente si usted viene de un entorno AngularJS. Sin embargo, a menudo es una mejor idea usar una propiedad computarizada en lugar de una llamada de "callback" `watch` imperativa. Considere este ejemplo: 
+
+HTML
+
+```
+<div id="demo">{{ fullName }}</div>
+
+```
+
+JS
+
+```
+
+var vm = new Vue({
+  el: '#demo',
+  data: {
+    firstName: 'Foo',
+    lastName: 'Bar',
+    fullName: 'Foo Bar'
+  },
+  watch: {
+    firstName: function (val) {
+      this.fullName = val + ' ' + this.lastName
+    },
+    lastName: function (val) {
+      this.fullName = this.firstName + ' ' + val
+    }
+  }
+})
+
+
+```
+
+El código anterior es imperativo y repetitivo. Compárelo con una versión de propiedad computarizada: 
+
+JS
+
+```
+
+var vm = new Vue({
+  el: '#demo',
+  data: {
+    firstName: 'Foo',
+    lastName: 'Bar'
+  },
+  computed: {
+    fullName: function () {
+      return this.firstName + ' ' + this.lastName
+    }
+  }
+})
+
+```
+
+### Calculo Setter 
+
+JS
+
+```
+// ...
+computed: {
+  fullName: {
+    // getter
+    get: function () {
+      return this.firstName + ' ' + this.lastName
+    },
+    // setter
+    set: function (newValue) {
+      var names = newValue.split(' ')
+      this.firstName = names[0]
+      this.lastName = names[names.length - 1]
+    }
+  }
+}
+// ...
+
+```
+
+
+Ahora cuando se corre `vm.fullName = 'John Doe'`, el setter será invocado y `vm.firstName` y `vm.lastName` será actualizada.
+
+## Observadores
+
+Aunque las propiedades calculadas son más apropiadas en la mayoría de los casos, hay ocasiones en las que se necesita un observador personalizado. Es por eso que Vue proporciona una manera más genérica de reaccionar a los cambios de datos a través de la opción de reloj. Esto es muy útil cuando se desea realizar operaciones asincrónicas o costosas en respuesta a la modificación de datos. 
+
+Por ejemplo:
+
+HTML
+
+```
+<div id="watch-example">
+  <p>
+    Ask a yes/no question:
+    <input v-model="question">
+  </p>
+  <p>{{ answer }}</p>
+</div>
+
+```
+
+HTML
+
+```
+<!-- Since there is already a rich ecosystem of ajax libraries    -->
+<!-- and collections of general-purpose utility methods, Vue core -->
+<!-- is able to remain small by not reinventing them. This also   -->
+<!-- gives you the freedom to use what you're familiar with.      -->
+<script src="https://cdn.jsdelivr.net/npm/axios@0.12.0/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lodash@4.13.1/lodash.min.js"></script>
+<script>
+var watchExampleVM = new Vue({
+  el: '#watch-example',
+  data: {
+    question: '',
+    answer: 'I cannot give you an answer until you ask a question!'
+  },
+  watch: {
+    // whenever question changes, this function will run
+    question: function (newQuestion, oldQuestion) {
+      this.answer = 'Waiting for you to stop typing...'
+      this.debouncedGetAnswer()
+    }
+  },
+  created: function () {
+    // _.debounce is a function provided by lodash to limit how
+    // often a particularly expensive operation can be run.
+    // In this ca.$watch API., we want to limit how often we access
+    // yesno.wtf/.$watch API.i, waiting until the user has completely
+    // finished t.$watch API.ing before making the ajax request. To learn
+    // more about.$watch API.he _.debounce function (and its cousin
+    // _.throttle.$watch API. visit: https://lodash.com/docs#debounce.$watch API.
+    this.debouncedGetAnswer = _.debounce(this.getAnswer, 500)
+  },
+  methods: {
+    getAnswer: function () {
+      if (this.question.indexOf('?') === -1) {
+        this.answer = 'Questions usually contain a question mark. ;-)'
+        return
+      }
+      this.answer = 'Thinking...'
+      var vm = this
+      axios.get('https://yesno.wtf/api')
+        .then(function (response) {
+          vm.answer = _.capitalize(response.data.answer)
+        })
+        .catch(function (error) {
+          vm.answer = 'Error! Could not reach the API. ' + error
+        })
+    }
+  }
+})
+</script>
+
+```
+
+Resultado:
+
+```
+Ask a yes/no question:
+
+<input/>
+
+```
+
+En este caso, usando la opción `watch` nos permite alcanzar una operaciòn asincrona, limitar la frecuencia con la que realizamos esa operación, y establecer estados intermedios hasta obtener una respuesta final. Nada de eso sería posible con una propiedad computarizada. 
+
+Además la opción `watch` se puede usar el imperactivo `vm.$watch API`.
+
+### Class y estilos vinculantes ###
+
+## Clases HTML vinculantes
+
+### Sintaxis de Objectos
+
+Podemos pasar un objeto a `v-bind:class` para cambiar clases dinamicamente:
+
+
+HTML
+```
+<div v-bind:class="{ active: isActive }"></div>
+
+```
+La sintaxis anterior significa que la presencia de la clase activa estará determinada por la veracidad de la propiedad de los datos `isActive`.
+
+Se puede tener clases múltiples alternadas al tener más campos en el objeto. Además, la directiva `v-bind:class` también puede coexistir con el atributo plano `class`. Así que, dada la siguiente plantilla: 
+
+HTML
+
+```
+<div
+  class="static"
+  v-bind:class="{ active: isActive, 'text-danger': hasError }"
+></div>
+
+```
+
+Y la data siguiente: 
+
+JS
+
+```
+data: {
+  isActive: true,
+  hasError: false
+}
+
+```
+
+Esto renderizará:
+
+HTML
+
+```
+<div class="static active"></div>
+
+```
+
+Cuando cambia `isActive` o `hasError`, la lista de clases se actualizará en consecuencia. 
+Por ejemplo, si `hasError` se convierte en `true`, la lista de clases se convertirá en `"static active text-danger"`. 
+
+El objeto no tiene que estar alrededor de la línea: 
+
+HTML
+
+```
+<div v-bind:class="classObject"></div>
+
+```
+JS
+
+```
+data: {
+  classObject: {
+    active: true,
+    'text-danger': false
+  }
+}
+
+
+```
+
+Esto dará el mismo resultado. También podemos enlazar a una propiedad calculada que devuelva a un objeto. Esto es un patrón común y poderoso: 
+
+HTML
+
+```
+<div v-bind:class="classObject"></div>
+
+```
+
+JS
+
+```
+
+data: {
+  isActive: true,
+  error: null
+},
+computed: {
+  classObject: function () {
+    return {
+      active: this.isActive && !this.error,
+      'text-danger': this.error && this.error.type === 'fatal'
+    }
+  }
+}
+
+
+```
+
+### Sintaxis de arreglo
+
+Podemos pasar un arreglo a `v-bind:class` para aplicar una lista de clases:
+
+HTML
+
+```
+<div v-bind:class="[activeClass, errorClass]"></div>
+
+```
+
+JS
+
+```
+data: {
+  activeClass: 'active',
+  errorClass: 'text-danger'
+}
+
+```
+
+La cual renderizará:
+
+HTML
+
+```
+<div class="active text-danger"></div>
+
+```
+
+También podríamos cambiar una clase en una lista condionalmente, podemos hacerlo con una expresión ternaria:
+
+HTML
+
+```
+<div v-bind:class="[isActive ? activeClass : '', errorClass]"></div>
+
+```
+
+Esto nos dará siempre `errorClass`, sin embargo podemos aplicarlo con `activeClass` cuando `isActive` es verdadero.
+
+No obstante esto puede ser un poco engorroso si tenemos multiples clases condionales. Esto es por que es posible usar la sintaxis del objeto dentro de la sintaxis del arreglo:
+
+HTML
+
+```
+<div v-bind:class="[{ active: isActive }, errorClass]"></div>
+
+```
+
+### Con componentes
+
+Cuando se utiliza el atributo `class` sobre componentes personalizados, estas clases serán agregadas a los elementos raíz de los componentes. Las clases existentes en estos elementos no serán sobreescritos.
+
+Por ejemplo, si se declará esta componentes:
+
+ JS
+
+```
+
+Vue.component('my-component', {
+  template: '<p class="foo bar">Hi</p>'
+})
+
+```
+
+Entonces agregamos alguna clase usando:
+
+HTML
+
+```
+
+<my-component class="baz boo"></my-component>
+
+```
+
+El HTML renderizado será:
+
+HTML
+
+```
+<p class="foo bar baz boo">Hi</p>
+
+```
+
+Lo mismo ocurre con las vinculaciones las de clases: 
+
+HTML
+
+```
+<my-component v-bind:class="{ active: isActive }"></my-component>
+
+```
+
+Cuando ` isActive ` es verdadero, el HTML renderizado será:
+
+HTML
+
+```
+<p class="foo bar active">Hi</p>
+
+```
+
+## Estilos de vinculación en línea
+
+### Objeto sintaxis
+
+
+La sintaxis de los objetos para `v-bind:style` es bastante sencilla - se parece casi a CSS, excepto en los objetos JavaScript. Podemos nosotros usar `camelCase` o `kebab-case` (usar comillas con kebab-case) para los nombres de las propiedades CSS: 
+
+HTML
+
+```
+<div v-bind:style="{ color: activeColor, fontSize: fontSize + 'px' }"></div>
+
+```
+
+JS
+
+```
+data: {
+  activeColor: 'red',
+  fontSize: 30
+}
+
+```
+
+Es una buena idea vincular a un objeto de estilos directamente para que la plantilla este más limpia:
+
+HTML
+
+```
+
+<div v-bind:style="styleObject"></div>
+
+```
+
+JS 
+
+```
+data: {
+  styleObject: {
+    color: 'red',
+    fontSize: '13px'
+  }
+}
+
+```
+
+De nuevo, la sintaxis del objeto es a menudo usado en la conjunción con propiedades caculadas que retornan a un objeto.
+
+### Sintaxis del arreglo
+
+La sintaxis del arreglo por `v-bind: style` nos permite aplicar objetos de multiples estilos a el mismo elemento:
+
+HTML
+
+```
+<div v-bind:style="[baseStyles, overridingStyles]"></div>
+
+```
+
+### Auto-prefijo
+
+Cuando usamos una propiedad del CSS este requiere  `vendor prefixes` en `v-bind: styles`. Por ejemplo:
+`transform`, Vue automaticamente detecta y agrega prefijos apropiados a los estilos aplicados.
+
+
+### Valores Multiples
+
+2.3.0
+
+Comenzando en 2.3.0+ se puede proporcionar una matriz de valores múltiples (prefijados) a una propiedad de estilo, por ejemplo: 
+
+HTML
+
+```
+<div v-bind:style="{ display: ['-webkit-box', '-ms-flexbox', 'flex'] }"></div>
+
+```
+
+Esto sólo renderizará el último valor en la matriz soportada en el navegador. En este ejemplo, mostrará: flex para navegadores que soporten la versión no prefija del flexbox. 
