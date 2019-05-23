@@ -1316,3 +1316,272 @@ HTML
 ```
 
 Esto sólo renderizará el último valor en la matriz soportada en el navegador. En este ejemplo, mostrará: flex para navegadores que soporten la versión no prefija del flexbox. 
+
+
+## Registro de Componentes
+
+Cuando se registra un componente, a este siempre se le dará un nombre. Por ejemplo, en el registro global que hemos visto hasta ahora veremos lo siguiente:
+
+JS
+
+```
+Vue.component('my-component-name', {/* ... */})
+
+```
+
+El nombre del componente es el primer argumento de `Vue.component`.
+
+El nombre que se le da al componente podría depender del lugar donde se requiera utilizar.
+Cuando usas un componente directamente en el DOM (en lugar de en una plantilla de cadena o en componente de archivo unico), nosotros estrictamente recomendamos seguir las reglas de W3C para personalizar los nombre de las etiquetas (todas-minusculas, deben contener un guión ). Te ayuda a evitar conflictos con los elementos actuales y futuros del HTML.
+
+Puedes ver otras recomendaciones para el nombre de las name en el [Style Guide](https://vuejs.org/v2/name/#Base-component-names-strongly-recommended)
+name
+
+### Casos de Nombres (Name Casing)
+
+Se tinen dos opciones cuando definimos nombre de los componentes:
+
+**Con kebab-case**
+
+JS
+
+```
+Vue.component('my-component-name', { /* ... */ })
+
+```
+
+Cuando definimos una componente con **kebab-case**, tambien se debe usar **kebab-case** cuando nos referimos a elementos personalizados, tal como `<my-component-name>`
+
+**Con PascalCase**
+
+Vue.component('MyComponentName', { /* ... */})
+
+Cuando definimos un componente con `PascalCase` , podemos usar cualquier caso cuando nos referimos a sus elementos personalizados. Esto significa que `<my-component-name>` y `<MyComponentName>` son aceptados.
+
+**Nota: sin embargo, el nombre kebab-case es valido directamente en el DOM**
+
+
+## Registro Global
+
+Hemos creado componentes usando `Vue.component` :
+
+JS
+```
+Vue.component('my-component-name', { // ... options ... })
+
+```
+Estas componentes estan registradas globalmente. Esto significa que estos pueden ser usadas en las plantillas de cualquier raíz de la instancia de Vue (new Vue) creadas despues del registro. Por ejemplo:
+
+JS
+```
+Vue.component('component-a', { // ... options ... })
+Vue.component('component-b', { // ... options ... })
+Vue.component('component-c', { // ... options ... })
+
+new Vue({el: '#app'})
+
+```
+HTML
+
+```
+<div id="app">
+  <component-a></component-a>
+  <component-b></component-b>
+  <component-c></component-c>
+</div>
+
+```
+
+Esto incluso aplica a todos los subcomponentes, es decir que los tres componentes tambien estan disponibles uno dentro de otro.
+
+## Registro Local
+
+El registro Global en ocaciones no es ideal. Por ejemplo, si queremos usar un sistema de compilación como Webpack, el registro global de todos los componentes significa que incluso si deja de utilizar un componente, éste podría incluirse en su compilación final. Esto aumenta innecesariamente la cantidad de Javascript que sus usuarios tienen que descargar.
+
+
+JS
+
+```
+var ComponentA = { /* ... */ }
+var ComponentB = { /* ... */ }
+var ComponentC = { /* ... */ }
+
+```
+
+Luego:
+
+JS
+
+```
+new Vue({
+
+  el: 'app',
+  components:{
+    'component-a: ComponentA,
+    'component-b: ComponentB
+  }
+})
+
+```
+
+Para cada propiedad en el componente del objeto, la clave será el nombre del elemento personalizado, mientras que el valor contendrá el opciones del objeto para el componente.
+
+Tenga en cuenta que los componentes registrados localmente no están disponibles en los subcomponentes. Por ejemplo, si quisiera que `ComponentA` estuviera disponible en `ComponentB`, tendría que utilizarlo: 
+
+JS
+
+```
+var ComponentA = {/* ... */}
+var ComponentB = {/* ... */}
+
+var ComponentB = {
+  components: {
+    'component-a: ComponentA'
+  },
+  // ...
+}
+
+```
+
+ó si estamos usando modelos ES2015, tales como el Babel y Webpack,podría verse como sigue:
+
+JS
+
+```
+import ComponentA from './ComponentA.vue'
+
+
+export default {
+  components:{
+    ComponentA
+  },
+  // ...
+}
+
+```
+
+Note que en ES2015+, colocar un nombre de variable como `ComponenteA` dentro de un objeto es la abreviatura de `ComponenteA: ComponenteA`, lo que significa que el nombre de la variable son ambas:
+
+1. el nombre del elemento personalizado que se utilizará en la plantilla, y
+2. el nombre de la variable que contiene las opciones del componente
+
+
+## Modulos del sistema
+
+Si no estas usando algun módulo del sistema `import/require`, se puede problablemente saltar esta sección por ahora. Al contrario, tenemos algunas instrucciones y tips:
+
+### Registro Local dentro de un modulo del sistema
+
+Se recomienda crear un directorio o carpeta `components`, y cada componente estará dentro de su propio archivo.
+
+Luego se necesitará importar cada componente que se podría utilizar, despues de registrar el mismo localmente.
+Por ejemplo, en un archivo hipotètico ComponentB.js ò ComponentsB.vue:
+
+JS 
+
+```
+
+import ComponetnA from './ComponentA'
+import ComponentC from './ComponentC'
+
+export default {
+  components: {
+    ComponentA,
+    ComponentC
+  },
+  // ...
+}
+
+```
+
+Ahora ambos componentes `ComponentA` y `ComponentC` pueden ser usados dentro de la plantilla `ComponentB`.
+
+### Registro global Automático de componentes base
+
+Muchos de nuestros componentes serán relativamente genéricos, posiblemente sólo involucrando un elemento como una entrada o un botón. Nosotros nos referimos a estos como componentes base y ellos tienden a ser usados frecuentemente a través de los componentes.
+El resultado es que muchos de estos componentes podrian incluir una lista extensa de componentes base:
+ 
+ 
+ JS
+
+```
+import BaseButton from './BaseButton.vue'
+import BaseIcon from './BaseIcon.vue'
+import BaseInput from './BaseInput.vue'
+
+
+
+export default {
+  components: {
+    BaseButton,
+    BaseIcon,
+    BaseInput
+  }
+}
+
+```
+
+HTML
+
+```
+<BaseInput
+  v-model="searchText"
+  @keydown.enter="search"
+/>
+<BaseButton @click="search">
+  <BaseIcon name="search"/>
+</BaseButton>
+
+
+```
+
+Afortunadamente si se esta usando Webpack (ó Vue CLI3+, la cual usa internamente Webpack), se puede usar `require.context` para el registro global. Aquí un ejemplo de código que podría usar componentes base importado globalmente dentro de la carpeta de nuestra app (ejemplo: src/main.js)
+
+
+JS
+
+```
+
+import Vue from 'vue'
+import upperFirts from 'lodash/upperFirst'
+import camelCase from 'lodash/camelCase'
+
+
+
+const requireComponent = require.context(
+  // The relative path of the components folder
+  './components',
+  // Whether or not to look in subfolders
+  false,
+  // The regular expression used to match base component filenames
+  /Base[A-Z]\w+\.(vue|js)$/
+)
+
+requireComponent.keys().forEach(fileName => {
+  // Get component config
+  const componentConfig = requireComponent(fileName)
+
+  // Get PascalCase name of component
+  const componentName = upperFirst(
+    camelCase(
+      // Gets the file name regardless of folder depth
+      fileName
+        .split('/')
+        .pop()
+        .replace(/\.\w+$/, '')
+    )
+  )
+
+
+  // Register component globally
+  Vue.component(
+    componentName,
+    // Look for the component options on `.default`, which will
+    // exist if the component was exported with `export default`,
+    // otherwise fall back to module's root.
+    componentConfig.default || componentConfig
+  )
+})
+
+
+```
