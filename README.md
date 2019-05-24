@@ -2038,3 +2038,771 @@ HTML
 ></base-input>
 
 ```
+
+## Eventos personalizados ##
+
+## Nombre de eventos
+
+
+A diferencia de los componentes y `prop`, los nombres de los eventos no proporcionan ninguna transformación automática de casos. En su lugar, el nombre de un evento emitido debe coincidir exactamente con el nombre utilizado para escuchar ese evento. Por ejemplo, si se emite un nombre de evento `camelCased`: 
+Por ejemplo, si enviamos un evento `camelCased`: 
+
+JS
+
+```
+this.$emit('myEvent')
+
+```
+
+Escuchando a la versión de `kebab-cased` no tendrá efecto:
+
+HTML
+
+```
+<!-- Won't work -->
+<my-component v-on:my-event="doSomething"></my-component>
+
+```
+
+A diferencia de los componentes y props, los nombres de eventos nunca se utilizarán como nombres de variables o propiedades en JavaScript, por lo que no hay razón para usar `camelCase` ó `PascalCase`. Además, los oyentes de eventos `v-on` dentro de las plantillas DOM se transformarán automáticamente a minúsculas (debido a la insensibilidad a mayúsculas y minúsculas de HTML), de modo que `v-on:myEvent` se convertirá en `v-on:myevent` - haciendo que `myEvent` sea imposible de escuchar. 
+
+Por esta razón se recomienda siempre usar `kebab-case ` para el nombre del evento.
+
+## Personalización de componentes `vmodel` 2.2.0+
+
+Por defecto, `v-model` como el `prop` y `input` como el evento, pero algunos tipos de entradas cada boton `checkboxes` y `radio` podría usar el valor del atributo `value` para un propósito diferente. Usando la opción `model` podemos evitar un conflicto en cada caso:
+
+JS
+
+```
+Vue.component(base-checkbox,{
+
+  model:{
+
+    prop:'checked',
+    event:'change'
+  },
+  props:{
+
+    checked:Boolean
+
+  },
+  template:
+
+    <input
+      type="checkbox"
+      v-bind:checked="checked"
+      v-on:change="$emit('change', $event.target.checked)"
+    >
+
+})
+
+```
+
+Ahora cuando usamos `v-model` en este componente:
+
+HTML 
+
+```
+<base-checkbox v-model="lovingVue"></base-checkbox>
+
+```
+
+el valor de `lovingVue` pasará a el prop `checked`. La propiedad `lovingVue` se actualizará cuando ` <base-checkbox>` emita un evento `change` con un nuevo valor. 
+
+## Vinculación de eventos nativos a componentes 
+
+Puede haber ocasiones en las que se desea escuchar directamente un evento nativo al elemento raíz de un componente. En estos casos, se puede utilizar el modificador `.native` para `v-on`:
+
+HTML
+
+```
+<base-input v-on:focus.native="onFocus"></base-input>
+
+```
+
+
+Esto algunas veces puede ser de utilidad, sin embargo no es una buena idea cuando se trata de escuchar un elemento especifico, como un `<input>`. Por ejemplo, la componente `<base-input>` podría refactorizarse para que el elemento raíz sea realmente un elemento `<label>`
+
+HTML 
+
+```
+
+<label>
+  {{ label }}
+  <input
+    v-bind="$attrs"
+    v-bind:value="value"
+    v-on:input="$emit('input', $event.target.value)"
+  >
+</label>
+
+
+```
+
+En este caso, el oyente `.native` en el padre se romperìa silenciosamente. No habría errores, pero el `onFocus` no sería llamado cuando esperábamos.
+
+Para resolver este problema, Vue proporciona una propiedad `$listeners` que contiene objetos de oyentes que suele usarse sobre el componente:
+
+JS
+
+
+```
+
+{
+  focus: function (event) { /* ... */ }
+  input: function (value) { /* ... */ },
+}
+
+
+```
+
+Usando la propiedad `$listeners` se puede enviar todos los eventos oyentes sobre los componentes a un elemento hijo especifico con `v-on= "$listener"`. Para los elementos como `<input>`, tambien se puede trabajar con `v-model` , esto a menudo es útil para crear una nueva propiedad calculada para oyentes, como `inputListeners`
+
+
+JS
+
+```
+
+
+Vue.component('base-input', {
+  inheritAttrs: false,
+  props: ['label', 'value'],
+  computed: {
+    inputListeners: function () {
+      var vm = this
+      // `Object.assign` merges objects together to form a new object
+      return Object.assign({},
+        // We add all the listeners from the parent
+        this.$listeners,
+        // Then we can add custom listeners or override the
+        // behavior of some listeners.
+        {
+          // This ensures that the component works with v-model
+          input: function (event) {
+            vm.$emit('input', event.target.value)
+          }
+        }
+      )
+    }
+  },
+  template: `
+    <label>
+      {{ label }}
+      <input
+        v-bind="$attrs"
+        v-bind:value="value"
+        v-on="inputListeners"
+      >
+    </label>
+  `
+})
+
+
+
+```
+
+Ahora el componente `<base-input>` es totalmente transparente, lo que significa que puede ser usado exactamente como un elemento `<input>` normal: todos los mismos atributos y oyentes funcionarán, sin el modificador `.native`. 
+
+## .sync Modificador 2.3.0+
+
+En algunos casos podríamos necesitar dos caminos de vinculación para un `prop`. Desafortunadamente, estos dos caminos de enlace crean problemas de mantenimiento, porque los componentes hijos pueden mutar al padre sin que la fuente de esa mutación este tanto en el padre como en el hijo. 
+
+JS
+```
+this.$emit('update:title', newTitle)
+
+```
+
+Entonces el padre puede escuchar a ese evento y actualizar una propiedad de data local, por ejemplo:
+
+HTML
+
+```
+<text-document
+  v-bind:title="doc.title"
+  v-on:update:title="doc.title = $event"
+></text-document>
+
+```
+
+Atajos para los patrones con el modificador `.sync`:
+
+HTML
+```
+
+<text-document v-bind:title.sync="doc.title"></text-document>
+
+```
+
+Nota: `v-bind` con el modificador `.sync` no trabaja con expresiones tal como: `v-bind:title.sync=”doc.title + ‘!’”`. En su lugar, solo debe proporcionar el nombre de la propiedad que se desea vincular, de forma similar a `v-model`.
+
+El modificador `.sync` puede tambien ser usado con `v-bin` cuando usas un objetopara enviar `props` multiples :
+
+
+HTML
+
+```
+<text-document v-bind.sync="doc"></text-document>
+
+```
+
+Éste pasa cada propiedad en el objeto `doc` (por ejemplo title) como un prop individual, luego agrega oyentes de `v-on` actualizados para cada uno. 
+
+Usar `v-bind.sync` con un objeto literal, como en `v-bind.sync=";{ title: doc. title }`, no funcionará, porque hay demasiados casos para considerar al analizar una expresión compleja como ésta. 
+
+
+## Contenido Slot
+
+Vue implementa un contenido de distribución API inspirada por el 'Web components spec draft', usando el elemento `<slot>` para servir como puntos de distribución de contenido.
+
+Este permite contener componentes como: 
+
+HTML
+
+```
+<navigation-link url="/profile">
+  Your Profile
+</navigation-link>
+
+```
+
+Luego en la plantilla por `<navigation-link>` , podríamos tener:
+
+
+```
+<a
+  v-bind:href="url"
+  class="nav-link"
+>
+  <slot></slot>
+</a>
+
+```
+
+Cuando el componente se muestre, `<slot></slot>` será reemplazado por "Your Profile". Los `slots` pueden contar con cualquier código de la plantilla, incluyendo HTML:
+
+HTML
+
+```
+<navigation-link url="/profile">
+  <!-- Add a Font Awesome icon -->
+  <span class="fa fa-user"></span>
+  Your Profile
+</navigation-link>
+
+
+```
+
+ó inclusos otros componentes: 
+
+HTML
+
+```
+<navigation-link url="/profile">
+  <!-- Use a component to add an icon -->
+  <font-awesome-icon name="user"></font-awesome-icon>
+  Your Profile
+</navigation-link>
+
+```
+
+Si la plantilla del `<navigation-link>` no cuenta con un elemento `<slot>` cualquier contenido proveniente entre sus etiquetas abiertas y cerradas serán descartadas.
+
+## Alcance de la compilación
+
+Cuando se requiera usar una data dentro de un slot:
+
+HTML 
+
+```
+<navigation-link url="/profile">
+  Logged in as {{ user.name }}
+</navigation-link>
+
+```
+
+Ese slot tiene acceso a las mismas propiedades de la instancia (ejemplo el mismo scope) como el resto de la plantilla. El slot no tiene acceso al scope de  `<navigation-link>‘`. Por ejemplo, intentar acceder a la url no funcionará:
+
+HTML
+
+```
+
+<navigation-link url="/profile">
+  Clicking here will send you to: {{ url }}
+  <!--
+  The `url` will be undefined, because this content is passed
+  _to_ <navigation-link>, rather than defined _inside_ the
+  <navigation-link> component.
+  -->
+</navigation-link>
+
+
+
+```
+
+Toda plantilla padre es compilado dentro del scope padres, toda plantilla hijo es compilado dentro del scope hijo.
+
+## Contenido Fallback
+
+Hay casos en los que es útil especificar contenido alternativo (es decir, predeterminado) para una slot, que se renderizará sólo cuando no se proporcione contenido. Por ejemplo, en un componente `<submit-button>`: 
+
+HTML
+
+```
+<button type="submit">
+  <slot></slot>
+</button>
+
+```
+
+Es posible que se requiera el contenido que este dentro un boton, Para hacer "Submit" del contenido alternativo o fallback , nosotros podemos colocarlo entre las etiquetas `<slot>` :
+
+HTML
+
+```
+<button type="submit">
+  <slot>Submit</slot>
+</button>
+
+```
+
+Ahora cuando nosotros usamos `<submit-button>` en un componente padre, sin proporcionar contenido para el `slot`:
+
+HTML 
+
+```
+<submit-button></submit-button>
+
+```
+mostrando contenido alternativo, "Submit":
+
+HTML
+
+```
+<button type="submit">
+  Submit
+</button>
+
+```
+
+pero si nosotros preevemos el contenido:
+
+HTML
+
+```
+
+<submit-button>
+  Save
+</submit-button>
+
+```
+
+Luego el contenido proveniente será mostrado en su lugar:
+
+HTML
+
+```
+<button type="submit">
+  Save
+</button>
+
+```
+
+## Slots nombrados
+
+Hay momentos en los que es útil tener multiples `slots`. Por ejemplo, en un componente `<base-layout>` con la siguiente plantilla: 
+
+HTML
+
+```
+<div class="container">
+  <header>
+    <!-- We want header content here -->
+  </header>
+  <main>
+    <!-- We want main content here -->
+  </main>
+  <footer>
+    <!-- We want footer content here -->
+  </footer>
+</div>
+
+```
+
+Para este caso el elemento `<slot>` tiene un atributo especial, `name`, la cual puede ser usado para definir slots adicionales:
+
+HTML
+
+```
+<div class="container">
+  <header>
+    <slot name="header"></slot>
+  </header>
+  <main>
+    <slot></slot>
+  </main>
+  <footer>
+    <slot name="footer"></slot>
+  </footer>
+</div>
+
+```
+
+Una salida `<slot>` sin `name` implicitamente tiene el nombre por defecto (default).
+
+Para proporcionar contenido a `slots` con nombre, podemos usar la directiva `v-slot` en un `<template>`, proporcionando el nombre del slot `<slot>` como argumento de `v-slot`:
+
+HTML
+
+```
+<base-layout>
+  <template v-slot:header>
+    <h1>Here might be a page title</h1>
+  </template>
+
+  <p>A paragraph for the main content.</p>
+  <p>And another one.</p>
+
+  <template v-slot:footer>
+    <p>Here's some contact info</p>
+  </template>
+</base-layout>
+
+```
+
+Ahora cada cosa dentro del elemento `<element>` pasará a `slots` correspondiente. Cualquier contenido no envuelto en un `<template>` usando `v-slot` asume que será un slot por defecto.
+
+
+HTML
+
+```
+<base-layout>
+  <template v-slot:header>
+    <h1>Here might be a page title</h1>
+  </template>
+
+  <template v-slot:default>
+    <p>A paragraph for the main content.</p>
+    <p>And another one.</p>
+  </template>
+
+  <template v-slot:footer>
+    <p>Here's some contact info</p>
+  </template>
+</base-layout>
+
+```
+
+Por otro lado el HTML mostrará:
+
+HTML
+
+
+```
+
+<div class="container">
+  <header>
+    <h1>Here might be a page title</h1>
+  </header>
+  <main>
+    <p>A paragraph for the main content.</p>
+    <p>And another one.</p>
+  </main>
+  <footer>
+    <p>Here's some contact info</p>
+  </footer>
+</div>
+
+```
+
+Nota: `v-slot` puede solamente ser agregado a un `<template>` a diferencia del atributo `slot`
+
+
+## Scoped Slots
+
+Algunas veces, es útil que el contenido del `slot` tenga acceso a datos sólo disponibles en el componente hijo. Por ejemplo, imagine un componente `<current-user>` con la siguiente plantilla: 
+
+HTML
+
+```
+<span>
+  <slot>{{ user.lastName }}</slot>
+</span>
+
+```
+Nosotros podriamos querer reeemplazar el contenido alternativo para mostrar el nombre del primer usuario, en lugar del último, como este:
+
+HTML
+
+```
+<current-user>
+  {{ user.firstName }}
+</current-user>
+
+```
+
+Este no trabajará, porque solamente el componente `<current-user>` tiene acceso a el `user` y el contenido lo hemos mostrado en el padre.
+
+
+Para hacer un `user` disponible para el contenido slot en el padre, nosotros podemos vincular `user` con un atributo del elemento `<slot>`
+
+HTML
+
+```
+<span>
+  <slot v-bind:user="user">
+    {{ user.lastName }}
+  </slot>
+</span>
+
+```
+
+Los atributos ligados a un elemento `<slot>` se denominan 'slop props'. Ahora, en el scope padre, podemos usar `v-slot` con un valor para definir un nombre para los slop props que nos han proporcionado: 
+
+HTML
+
+```
+<current-user>
+  <template v-slot:default="slotProps">
+    {{ slotProps.user.firstName }}
+  </template>
+</current-user>
+
+```
+
+En este ejemplo, hemos elegido el nombre del objeto que contiene todos nuestros `slot props` (slotProps), pero puedes usar el nombre que quieras.
+
+### Sintaxis abreviada para los slots por defecto de Lone 
+
+En el caso que solamente el `slot` por defecto provenga del contenido, las etiquetas de los componentes pueden ser usadas como las plantillas del slot. Esto nos permite usar directamente el `v-slot` en el componente:
+
+HTML
+
+```
+<current-user v-slot:default="slotProps">
+  {{ slotProps.user.firstName }}
+</current-user>
+
+```
+
+Tambien se puede colocar sin el argumento ya que asume que esta por default:
+
+HTML
+
+```
+<current-user v-slot="slotProps">
+  {{ slotProps.user.firstName }}
+</current-user>
+```
+
+Nota: esta sintaxis del slot por defecto no puede estar mezclado con otros `slots`:
+
+HTML 
+
+```
+
+<!-- INVALID, will result in warning -->
+<current-user v-slot="slotProps">
+  {{ slotProps.user.firstName }}
+  <template v-slot:other=" ES2015 destructuringotherSlotProps">
+    slotProps is NOT avail ES2015 destructuringable here
+  </template> ES2015 destructuring
+</current-user> ES2015 destructuring
+ ES2015 destructuring
+ ES2015 destructuring
+``` ES2015 destructuring
+ ES2015 destructuring
+Normalmente cuando hay var ES2015 destructuringios slots se usa la sintaxis basada en varios `<template>` para todos los `slots`:
+
+HTML
+
+```
+
+<current-user>
+  <template v-slot:default="slotProps">
+    {{ slotProps.user.firstName }}
+  </template>
+
+  <template v-slot:other="otherSlotProps">
+    ...
+  </template>
+</current-user>
+
+
+```
+
+
+### Destructuración del Slot Props
+
+
+Internamente, el trabajo del slot se realizará dentro de una función que pasará a un argumento simple:
+
+JS
+
+```
+
+function (slotProps){
+// ... contenido del slot
+}
+
+```
+
+Eso significa que el valor de `v-slot` puede actualmente aceptar cualquier valor de la expresion de Javascript esto puede aparecer en la posición del argumento de una función definida. Tambien puedes hacer uso de [ES2015 destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) para especificar `slot props`:
+
+HTML
+
+```
+<current-user v-slot="{ user }">
+  {{ user.firstName }}
+</current-user>
+
+```
+
+Esto puede ser mas limpio especialmente cuando proviene de muchos props. Esto tambien abre muchas posibilidades, como renombrar props, ejemplo `user` a `person`:
+
+
+HTML
+
+```
+<current-user v-slot="{ user: person }">
+  {{ person.firstName }}
+</current-user>
+
+```
+
+Puedes incluso definir alternativas 'fallbacks' para ser usados en caso de que un slot prop este indefinido:
+
+HTML
+
+```
+
+<current-user v-slot="{ user = { firstName: 'Guest' } }">
+  {{ user.firstName }}
+</current-user>
+
+```
+
+## Nombre de Slot dinamicos 2.6.0+
+
+Los argumentos de directivas dinamicas tambien trabajan en `v-slot` permitiendo la definición de nombres de slot dinamicos:
+
+
+
+HTML
+
+```
+
+<base-layout>
+  <template v-slot:[dynamicSlotName]>
+    ...
+  </template>
+</base-layout>
+
+
+```
+
+## Atajos de Slots nombrados
+
+
+Similar al `v-on` y `v-bind`, `v-slot` tambien tiene atajos, reemplazando cada cosa antes del argumento con el simbolo `#`. Por ejemplo, `v-slot:header` pueden reescribirse como `#header`:
+
+HTML
+
+```
+<base-layout>
+  <template #header>
+    <h1>Here might be a page title</h1>
+  </template>
+
+  <p>A paragraph for the main content.</p>
+  <p>And another one.</p>
+
+  <template #footer>
+    <p>Here's some contact info</p>
+  </template>
+</base-layout>
+
+```
+
+Sin embargo, hasta con otras directivas, el atajo esta siempre disponible cuando un argumento es proporcionado.
+Por lo que la siguiente sintaxis es invalidad:
+
+HTML
+
+```
+<!-- This will trigger a warning -->
+<current-user #="{ user }">
+  {{ user.firstName }}
+</current-user>
+
+```
+
+En su lugar se debe siempre especificar el nombre de el slot si se desea usar el atajo:
+
+HTML
+
+```
+<current-user #default="{ user }">
+  {{ user.firstName }}
+</current-user>
+
+```
+
+### Otros ejemplos
+
+Los slot prop nos permite transformar el slots dentro de las plantillas reutilizables que puedan mostrar diferentes contenidos basados en entradas props. Esto mayormente es útil cuando se esta diseñando un componente reutilizable que encapsula la logica de la data mientras permite consumir el componente padre para personalizar parte de su layout.
+
+Por ejemplo, la componente `<todo-list>` cuenta el layout y filtrando la lógica para una lista:
+
+HTML
+
+```
+<ul>
+  <li
+    v-for="todo in filteredTodos"
+    v-bind:key="todo.id"
+  >
+    {{ todo.text }}
+  </li>
+</ul>
+
+```
+
+
+En el lugar de un codigo complejo el contenido de cada `todo` podemos permitir que el componente padre tome el control por hacer cada `todo` un slot, luego vincular `todo` como un slot prop: 
+
+HTML
+
+```
+<ul>
+  <li
+    v-for="todo in filteredTodos"
+    v-bind:key="todo.id"
+  >
+    <!--
+    We have a slot for each todo, passing it the
+    `todo` object as a slot prop.
+    -->
+    <slot name="todo" v-bind:todo="todo">
+      <!-- Fallback content -->
+      {{ todo.text }}
+    </slot>
+  </li>
+</ul>
+
+```
+
+Ahora cuando nosotros usamos el componente `<todo-list>`, nosotros podemos definir opcionalmente una alternativa `<template>` por el item `todo`, pero con el acceso para la data desde el niño:
+
+HTML
+
+```
+<todo-list v-bind:todos="todos">
+  <template v-slot:todo="{ todo }">
+    <span v-if="todo.isComplete">✓</span>
+    {{ todo.text }}
+  </template>
+</todo-list>
+
+```
