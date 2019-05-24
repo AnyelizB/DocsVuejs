@@ -2209,6 +2209,7 @@ Ahora el componente `<base-input>` es totalmente transparente, lo que significa 
 En algunos casos podríamos necesitar dos caminos de vinculación para un `prop`. Desafortunadamente, estos dos caminos de enlace crean problemas de mantenimiento, porque los componentes hijos pueden mutar al padre sin que la fuente de esa mutación este tanto en el padre como en el hijo. 
 
 JS
+
 ```
 this.$emit('update:title', newTitle)
 
@@ -2229,6 +2230,7 @@ HTML
 Atajos para los patrones con el modificador `.sync`:
 
 HTML
+
 ```
 
 <text-document v-bind:title.sync="doc.title"></text-document>
@@ -2611,8 +2613,10 @@ HTML
 </current-user> ES2015 destructuring
  ES2015 destructuring
  ES2015 destructuring
-``` ES2015 destructuring
  ES2015 destructuring
+ ES2015 destructuring
+
+ ``` 
 Normalmente cuando hay var ES2015 destructuringios slots se usa la sintaxis basada en varios `<template>` para todos los `slots`:
 
 HTML
