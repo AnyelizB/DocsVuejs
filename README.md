@@ -1784,4 +1784,257 @@ HTML
 
 Todos los accesorios forman un vínculo unidireccional entre la propiedad hijo y la propiedad padre: cuando la propiedad padre se actualiza, fluirá hacia el hijo pero no al revés. Esto evita que los componentes hijo muten accidentalmente a el estado padre, lo que puede hacer que el flujo de datos de su aplicación sea más difícil de entender.
 
+Además, cada vez que el componente padre es actualizado todos los `props` en el componente hijo serán refrescado con el último valor. Esto significa que no intentaria mutar un prop dentro de un componente hijo. 
 
+Para estos existen dos casos:
+
+1. El prop es usado para inicializar valores; los componentes hijos quieren usar despues esto como una propiedad data local. 
+
+
+JS
+
+```
+
+props: ['initialCounter'],
+data: function () {
+  return {
+    counter: this.initialCounter
+  }
+}
+
+
+```
+
+2. El prop para ser transformado. En este caso es mejor definir una propiedad calculada usando los valores de props:
+
+JS
+
+```
+props: ['size'],
+computed: {
+  normalizedSize: function () {
+    return this.size.trim().toLowerCase()
+  }
+}
+
+```
+
+Nota: los objeto y arreglos en javacript son pasados por referencia, si el prop es un arreglo o objeto, la mutación del objeto o arreglo dentro del componente hijo afectará al estado padre. 
+
+
+## Validación del Prop
+
+Los componentes pueden requerir especificamente por su prop, como los que ya hemos visto. Si un requerimiento no es conocido, Vue lo mostrará en la consola del navegador.
+Esto es útil cuando se desarrolla un componente que esta destinado a ser utilizado por otro.
+
+Para especificar validaciones de `prop`, se puede proporcionar un objeto con requisitos de validación al valor de los `prop`, en lugar de un arreglo de cadenas. 
+
+**Por ejemplo:** 
+
+JS
+
+```
+Vue.component('my-component', {
+  props: {
+    // Basic type check (`null` and `undefined` values will pass any type validation)
+    propA: Number,
+    // Multiple possible types
+    propB: [String, Number],
+    // Required string
+    propC: {
+      type: String,
+      required: true
+    },
+    // Number with a default value
+    propD: {
+      type: Number,
+      default: 100
+    },
+    // Object with a default value
+    propE: {
+      type: Object,
+      // Object or array defaults must be returned from
+      // a factory function
+      default: function () {
+        return { message: 'hello' }
+      }
+    },
+    // Custom validator function
+    propF: {
+      validator: function (value) {
+        // The value must match one of these strings
+        return ['success', 'warning', 'danger'].indexOf(value) !== -1
+      }
+    }
+  }
+})
+
+```
+
+Cuando la validación del prop falla, Vue mostrará en la consola un error
+
+**Nota: los prop seran validos antes de la creación de la instancia del componente, sino la propiedad de la instancia no estará disponible dentro de la funciones `default` ó `validator`.**  
+
+### Tipos
+
+Los tipos `type` pueden ser uno de los siguientes contructores nativos:
+
+
+    String
+    Number
+    Boolean
+    Array
+    Object
+    Date
+    Function
+    Symbol
+
+
+Además, los tipos pueden tambien ser funciones de contructores personalizados y la inserción será realizada con `instanceof` . Por ejemplo, tenemos la siguiente función del constructor existente:
+
+JS
+
+```
+
+function Person (firstName, lastName) {
+  this.firstName = firstName
+  this.lastName = lastName
+}
+
+```
+
+se podría usar:
+
+JS 
+
+```
+
+Vue.component('blog-post', {
+  props: {
+    author: Person
+  }
+})
+
+```
+
+para validar que el valor del objeto de `author` fue creada con `new Person`
+
+## No-prop
+
+Un atributo `non-prop` es un atributo que se pasa a un componente, pero no tiene un prop correspondiente definido.
+
+Mientras un `prop` definido explícitamente pasan la información a un componete hijo, los autores de las librerías de los componentes no siempre se pueden proveer los contextos en los que se pueden utilizar sus componentes. Es por eso que los componentes pueden aceptar atributos arbitrarios, que se añaden al elemento raíz del componente.
+
+Por ejemplo, imaginemos que estamos usando un componente de entrada `bootstrap-date-input` con un plugin de Bootstrap que requiere un atributo `data-date-picker` en la entrada. Podemos añadir este atributo a nuestra instancia de componente:
+
+HTML
+
+```
+<bootstrap-date-input data-date-picker="activated"></bootstrap-date-input>
+
+```
+
+Y el atributo `data-date-picker="activated"` será agregado automáticamente a la raíz del elemento de `bootstrap-date-input`.
+
+## Reemplazando/ fusionando con atributos existentes
+
+Imagine que tenemos como plantilla `bootstrap-date-input`:
+
+
+HTML
+```
+<input type="date" class="form-control">
+
+```
+Para especificar un tema para nuestro plugin de `date picker`, nosotros podríamos agregar una clase especifica, como este:
+
+HTML
+
+```
+
+<bootstrap-date-input
+  data-date-picker="activated"
+  class="date-picker-theme-dark"
+></bootstrap-date-input>
+
+
+```
+En este caso los dos diferentes valores para la clase estan definidos:
+
+1. `form-control` :  envia estilos a los componentes.
+
+2. `date-picker-theme-dark` : pasa a los componentes por sus padres.
+
+La mayoría de los atributos, el valor proporcionado al componente reemplazará los valores establecido por los componente. Así que por ejemplo, pasando `type="text"`; reemplazará `type="date"`; y probablemente lo romperá! Afortunadamente, los atributos de clase y estilo (`class` y `style`) son un poco más hábil, por lo que ambos valores se fusionan, haciendo que el valor final: `form-control` `date-picker-theme-dark`.
+
+### Desactivación de atributos de herencia
+Si no se requiere que el elemento raíz de una componente de atributos sea heredado podemos enviar `inherintAttrs: false ` en las opciones del componente. Por ejemplo:
+
+JS
+
+```
+Vue.component( 'my-component', {
+
+    inheritAttrs: false,
+})
+
+```
+
+Esto puede ser especialmente útil en combinanción con la propiedad de la instancia `$attrs` 
+
+JS
+
+```
+{
+  required :true,
+  palceholder:'Enter your username'
+}
+
+```
+
+JS
+
+```
+Vue.component('base-input', {
+  inheritAttrs: false,
+  props: ['label', 'value'],
+  template: `
+    <label>
+      {{ label }}
+      <input
+        v-bind="$attrs"
+        v-bind:value="value"
+        v-on:input="$emit('input', $event.target.value)"
+      >
+    </label>
+  `
+})
+
+```
+
+**Nota: la opción de `inheritAttrs: false` no afectan los estilos y las clases vinculadas**
+
+
+HTML
+
+```
+<base-input
+  v-model="username"
+  required
+  placeholder="Enter your username"
+></base-input>
+
+```
+
+Este patrón le permite utilizar componentes base más como elementos puros HTML, sin tener que preocuparse sobre cual elemento está actualmente en su raíz: 
+
+HTML
+
+```
+<base-input
+  v-model="username"
+  required
+  placeholder="Enter your username"
+></base-input>
+
+```
