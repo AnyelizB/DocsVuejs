@@ -2810,3 +2810,3096 @@ HTML
 </todo-list>
 
 ```
+
+## Sintaxis no apropiado
+
+La directiva `v-slot` se introdujo en Vue 2.6.0, ofreciendo de esta manera una API mejorada y alternativa a los atributos de soportados de `slot` . 
+
+### Slots nombrados con el atributo Slot 2.6.0+
+
+Para pasar contenido a slot nombrados desde el padre, se utiliza el atributo especial del slot `<template> (usando el componente descrito <base-layout>` 
+
+HTML
+
+```
+<base-layout>
+  <template slot="header">
+    <h1>Here might be a page title</h1>
+  </template>
+
+  <p>A paragraph for the main content.</p>
+  <p>And another one.</p>
+
+  <template slot="footer">
+    <p>Here's some contact info</p>
+  </template>
+</base-layout>
+
+```
+
+ó los atributos slot pueden ser tambien usados directamente en un elemento normal:
+
+HTML
+
+```
+<base-layout>
+  <h1 slot="header">Here might be a page title</h1>
+
+  <p>A paragraph for the main content.</p>
+  <p>And another one.</p>
+
+  <p slot="footer">Here's some contact info</p>
+</base-layout>
+```
+
+Puede haber un slot sin nombre, la cual es el slot por defecto que sirve como `catch-all` para cualquier contenido.
+Entonce sería:
+
+HTML
+
+```
+<div class="container">
+  <header>
+    <h1>Here might be a page title</h1>
+  </header>
+  <main>
+    <p>A paragraph for the main content.</p>
+    <p>And another one.</p>
+  </main>
+  <footer>
+    <p>Here's some contact info</p>
+  </footer>
+</div>
+
+```
+
+### SLOTS de alcance con el atributo slot-scope
+
+Para recibir props pasados a slot, el componente padre puede usar `<template>` con el atributo `slot-scope` (usando `<slot-example>`):
+
+HTML
+
+
+```
+<slot-example>
+  <template slot="default" slot-scope="slotProps">
+    {{ slotProps.msg }}
+  </template>
+</slot-example>
+```
+
+Aquí el `slot-scope` declara el object props recibido como una variable de slotProps y lo hace disponible dentro del `<template>` Se puede nombrar el slotprop como se desee pero de forma similar a los argumentos de las funciones de los argumentos de javasacript.
+
+`slot= "default"`
+
+HTML
+
+```
+<slot-example>
+  <template slot-scope="slotProps">
+    {{ slotProps.msg }}
+  </template>
+</slot-example>
+
+```
+
+El atributo `slot-scope` puede ser usado directamente en un elemento non-`<template>` 
+
+HTML
+
+```
+<slot-example>
+  <span slot-scope="slotProps">
+    {{ slotProps.msg }}
+  </span>
+</slot-example>
+
+
+```
+
+El valor de `slot-scope` puede aceptar cualquiera expresión de javascript esto puede aparecer en la posición del argumento de una función definida:
+
+HTML
+
+ ```
+ <slot-example>
+  <span slot-scope="{ msg }">
+    {{ msg }}
+  </span>
+</slot-example>
+
+```
+
+Usando el `<todo-list>` descrito aquí, es equivalente a usar `slot-scope`:
+
+HTML
+
+```
+<todo-list v-bind:todos="todos">
+  <template slot="todo" slot-scope="{ todo }">
+    <span v-if="todo.isComplete">✓</span>
+    {{ todo.text }}
+  </template>
+</todo-list>
+
+```
+
+## Componentes dinamicos y asincronicos
+
+`keep-alive` con componentes dinámicos
+
+Anteriormente usabamos este atributo para cambiar entre componentes de una interfaz de pestañas:
+
+HMTL
+
+```
+<component v-bind:is="currentTabComponent"></component>
+
+```
+
+Sin embargo, cuando entre estos cambien los componentes a veces se querra mantener su estado o evitar volver a rederizarlos por razones de rendimiento.
+
+
+Notarás que si seleccionas un mensaje, cambias a la pestaña Archivar, luego vuelves a Cambiar a Mensajes, ya no se muestra el mensaje que seleccionaste. Esto se debe a que cada vez que se cambia a una nueva pestaña, Vue crea una nueva instancia del `currentTabComponente`.
+
+Recrear componentes dinámicos es normalmente un comportamiento útil, pero en este caso, nos gustaría que esas instancias de componentes de pestañas se almacenaran en caché una vez que se hayan creado por primera vez. Para resolver este problema, podemos envolver nuestro componente dinámico con un elemento `<keep-alive>`: 
+
+HTML
+
+```
+<!-- Inactive components will be cached! -->
+<keep-alive>
+  <component v-bind:is="currentTabComponent"></component>
+</keep-alive>
+
+```
+
+Tenga en cuenta que `<keep-alive>` requiere que los componentes entre los que se cambia a todos tengan nombres, ya sea usando la opción de nombre en un componente, o a través del registro local/global. 
+
+### Componentes Asincrónicos
+
+En aplicaciones grandes, es posible que tengamos que dividir la aplicación en trozos más pequeños y sólo cargar un componente del servidor cuando sea necesario. Para facilitar esto, Vue le permite definir su componente como una función de fábrica que resuelve asincrónicamente la definición de su componente. Vue sólo activará la función de fábrica cuando el componente necesite ser renderizado y almacenará en caché el resultado para futuros re-envíos. Por ejemplo: 
+
+JS
+
+```
+
+Vue.component('async-example', function (resolve, reject) {
+  setTimeout(function () {
+    // Pass the component definition to the resolve callback
+    resolve({
+      template: '<div>I am async!</div>'
+    })
+  }, 1000)
+})
+
+```
+
+Como puede ver, la función de fábrica recibe una llamada de resolve, que debería llamarse cuando haya recuperado la definición de su componente del servidor. También puede llamar a reject(reason) para indicar que la carga ha fallado. El setTimeout aquí es para demostración; cómo recuperar el componente depende de usted. Un enfoque recomendado es utilizar componentes de asincronía junto con la función de división de código de Webpack: 
+
+JS
+```
+Vue.component('async-webpack-example', function (resolve) {
+  // This special require syntax will instruct Webpack to
+  // automatically split your built code into bundles which
+  // are loaded over Ajax requests.
+  require(['./my-async-component'], resolve)
+})
+
+```
+
+Tambien puedes retornar a una promesa `Promise` 
+
+JS
+```
+Vue.component(
+  'async-webpack-example',
+  // The `import` function returns a Promise.
+  () => import('./my-async-component')
+)
+```
+
+Cuando usamos registro local, se puede proveer directamente de una función esta returna a una promesa:
+
+JS
+
+```
+new Vue({
+  // ...
+  components: {
+    'my-component': () => import('./my-async-component')
+  }
+})
+
+```
+
+### Manipulación de estado de carga 2.3.0+
+
+La fábrica de componentes asincrónicos tambien puede devolver un objeto del siguiente formato:
+
+JS
+
+```
+const AsyncComponent = () => ({
+  // The component to load (should be a Promise)
+  component: import('./MyComponent.vue'),
+  // A component to use while the async component is loading
+  loading: LoadingComponent,
+  // A component to use if the load fails
+  error: ErrorComponent,
+  // Delay before showing the loading component. Default: 200ms.
+  delay: 200,
+  // The error component will be displayed if a timeout is
+  // provided and exceeded. Default: Infinity.
+  timeout: 3000
+})
+
+```
+
+## Manejos de casos de bordes
+
+### Accesos de Elememntos y Componentes
+
+
+La mayoría de los casos, es mejor evitar buscar en otras instancias de componentes o manipular manualmente los elementos DOM. Sin embargo, hay casos en los que puede ser apropiado:
+
+
+### Acceso a la instancia raíz
+
+En cada subcomponente de la nueva instancia new Vue, esta instancia raíz puede ser accedido con la propiedad `$root`: 
+JS
+
+```
+// The root Vue instance
+new Vue({
+  data: {
+    foo: 1
+  },
+  computed: {
+    bar: function () { /* ... */ }
+  },
+  methods: {
+    baz: function () { /* ... */ }
+  }
+})
+
+```
+
+Todos los subcomponentes ahora estaran disponibles para acceder a esta instancia y usar esto como una tienda global:
+
+JS
+
+```
+
+// Get root data
+this.$root.foo
+
+// Set root data
+this.$root.foo = 2
+
+// Access root computed properties
+this.$root.bar
+
+// Call root methods
+this.$root.baz()
+
+```
+
+### Acceso a la instancia del Componente Padre
+
+
+Similar a `$root`, la propiedad padre puede ser usado para acceder a la instancia desde un hijo. Eso puede ser tentador para alcanzar como una alternativa a pasar datos con un prop.
+
+
+Sin embargo, hay casos, en particular las bibliotecas de componentes compartidos, en los que esto podría ser apropiado. Por ejemplo, en componentes abstractos que interactúan con APIs de JavaScript en lugar de renderizar HTML, como estos hipotéticos componentes de Google Map:
+
+HTML
+
+```
+<google-map>
+  <google-map-markers v-bind:places="iceCreamShops"></google-map-markers>
+</google-map>
+
+```
+
+El componente `<google-map>` podria definir una propiedad del map a las que todos los subcomponentes necesitan tener acceso. En este caso ` <google-map-markers> ` podría querer acceder a ese mapa con algo como `this.$parent.getMap` :
+
+HTML
+```
+<google-map>
+  <google-map-region v-bind:shape="cityBoundaries">
+    <google-map-markers v-bind:places="iceCreamShops"></google-map-markers>
+  </google-map-region>
+</google-map>
+
+```
+En lugar de `<google-map-markers>` se podria encontrar buscando un hack como este:
+
+JS 
+
+```
+var map = this.$parent.map || this.$parent.$parent.map
+
+```
+
+### Accediendo a la instancia de los componentes hijos y elementos hijos
+
+A pesar de los props y eventos, algunas veces es posible que se necesite acceder directamente a un componente hijo en Javascript. Para ello, puede asignar un ID de referencia al componente hijo utilizando el atributo ref. Por ejemplo:
+
+
+HTML
+
+```
+<base-input ref="usernameInput"></base-input>
+```
+
+Ahora en el componente donde has definido este `ref` se puede usar:
+
+JS
+```
+this.$refs.usernameInput
+```
+
+para acceder a la instancia `<base-input>`. Este puede ser util cuando se requiera, por ejemplo enfocar  programaticamente esta entrada de un padre. En este caso, el componente `<base-input>` puede utilizar de forma similar a una ref para proporcionar acceso a elementos especificos dentro de él:
+
+HTML
+```
+<input ref="input">
+```
+
+E incluso definir metodos para el uso de los padres
+
+JS
+
+ ```
+methods: {
+  // Used to focus the input from the parent
+  focus: function () {
+    this.$refs.input.focus()
+  }
+}
+ ```
+
+ Esto permite al componente padre enfocar la entrada dentro de `<base-input>` 
+
+ JS
+
+  ```
+    this.$refs.usernameInput.focus()
+  ```
+
+Cuando el `ref` es usado junto con `v-for` la referencia que obtendra sera una matriz que contiene los componentes hijo que reflejan la fuente de los datos.
+
+### Inyección de dependencia
+
+Cuando describimos un acceso de la instancia de los componentes padres, mostramos un ejemplo como este:
+
+HTML
+
+```
+<google-map>
+  <google-map-region v-bind:shape="cityBoundaries">
+    <google-map-markers v-bind:places="iceCreamShops"></google-map-markers>
+  </google-map-region>
+</google-map>
+```
+En este componente, todos los descendientes de `<google-map>` necesitan acceder a un metodo getMap para saber con que mapa interactuar. Desafortunadamente, el uso de la propiedad $parent no se adaptó bien a componentes anidados más profundos. Ahí es donde la inyección de dependencia puede ser útil, utilizando dos nuevas opciones de instancia: proporcionar e inyectar.
+
+Las opciones de proporcionar nos permiten especificar los datos/métodos que queremos proporcionar a los componentes descendentes. Metodo `getMap` en lugar de `<google-map>`
+
+JS
+
+```
+provide: function () {
+  return {
+    getMap: this.getMap
+  }
+}
+
+```
+Luego de cualquier decendencia nosotros podemos usar la opción `inject` para recibir especificamente propiedades que se agrego en la instancia:
+
+JS
+
+```
+inject: ['getMap']
+
+```
+
+ La ventaja sobre el uso de `$parent` es que podemos acceder a `getMap` en cualquier componente descendente, sin exponer toda la instancia de `<google-map>`. Esto nos permite seguir desarrollando ese componente de forma más segura, sin temor a que podamos cambiar o eliminar algo en lo que confía un componente hijo. La interfaz entre estos componentes permanece claramente definida, al igual que en el caso de los `props`. 
+
+ ### Listeners de oventos programáticos
+
+ Hasta ahora hemos usado `$emit`, escuchado con `v-on`, pero la instancia Vue tambien ofrece otros metodos en su interfaz de eventos:
+
+ 1. Escuchar un evento con `$on(eventName, eventHandler)` 
+ 2. Escuchar un evento solamente una vez con `$once(eventName, eventHandler)`
+ 3. Deja de escuchar un evento con `$off(eventName, eventHandler)`
+
+ Normalmente no tendrá que usarlos, pero están disponibles para los casos en los que necesite escuchar manualmente los eventos de una instancia de un componente. También pueden ser útiles como una herramienta de organización de código. Por ejemplo, es posible que a menudo vea este patrón para integrar una biblioteca de terceros: 
+
+ JS 
+
+ ```
+// Attach the datepicker to an input once
+// it's mounted to the DOM.
+mounted: function () {
+  // Pikaday is a 3rd-party datepicker library
+  this.picker = new Pikaday({
+    field: this.$refs.input,
+    format: 'YYYY-MM-DD'
+  })
+},
+// Right before the component is destroyed,
+// also destroy the datepicker.
+beforeDestroy: function () {
+  this.picker.destroy()
+}
+
+
+ ```
+
+
+Esto tiene dos potenciales:
+
+1. Requiere guardar el `picker` en la instancia del componente, cuando es posible que sólo los ganchos del ciclo de vida necesiten acceder a él. Esto no es terrible, pero podría considerarse un desorden.
+2. Nuestro código de configuración se mantiene separado de nuestro código de limpieza, lo que dificulta la limpieza programática de todo lo que configuramos.
+
+Puede resolver ambos problemas con un oyente programático: 
+
+JS
+
+ ```
+mounted: function () {
+  var picker = new Pikaday({
+    field: this.$refs.input,
+    format: 'YYYY-MM-DD'
+  })
+
+  this.$once('hook:beforeDestroy', function () {
+    picker.destroy()
+  })
+}
+
+  ```
+
+  Usando esta estrategia, podríamos incluso usar `Pikaday` con varios elementos de entrada, con cada nueva instancia limpiándose automáticamente después de sí misma: 
+
+JS
+
+  ```
+mounted: function () {
+  this.attachDatepicker('startDateInput')
+  this.attachDatepicker('endDateInput')
+},
+methods: {
+  attachDatepicker: function (refName) {
+    var picker = new Pikaday({
+      field: this.$refs[refName],
+      format: 'YYYY-MM-DD'
+    })
+
+    this.$once('hook:beforeDestroy', function () {
+      picker.destroy()
+    })
+  }
+}
+  ```
+
+## Referencia circular
+
+### Componentes recursivos
+
+Los componentes pueden invocarse recursivamente en su propio modelo. Sin embargo solo puede hacerlo con la opción `name`:
+
+JS
+
+  ```
+name: 'unique-name-of-my-component'
+
+
+  ```
+
+  Cuando se registra un componente globalmente usando `Vue.component` , el ID global es automaticamente enviado como la opcion de componeonte `name`.
+
+  JS
+
+  ```
+Vue.component('unique-name-of-my-component', {
+  // ...
+})
+
+  ```
+
+  Si no se tiene cuidado los componentes recursivos pueden tambien conducir a lazos infinitos:
+   
+   JS
+
+    
+```
+name: 'stack-overflow',
+template: '<div><stack-overflow></stack-overflow></div>'
+```
+
+Un componente como el anterior resultará en un error de "tamaño máximo de pila excedido", así que asegúrese de que la invocación recursiva es condicional (es decir, usa una `v-if` esa eventualmente es falsa). 
+
+### Referencia circular entre componentes
+
+Supongamos que está construyendo un árbol de directorios de archivos, como en el Finder o el Explorador de archivos. Es posible que tenga un componente de carpeta de árbol con esta plantilla: 
+
+HTML
+
+```
+<p>
+  <span>{{ folder.name }}</span>
+  <tree-folder-contents :children="folder.children"/>
+</p>
+
+```
+
+Luego un `tree-folder-contents` componentes con esta plantilla:
+
+HTML 
+```
+<ul>
+  <li v-for="child in children">
+    <tree-folder v-if="child.children" :folder="child"/>
+    <span v-else>{{ child.name }}</span>
+  </li>
+</ul>
+
+```
+
+
+Cuando mires de cerca, verás que estos componentes serán en realidad los descendientes y antepasados del otro en el árbol de renderizado - ¡una paradoja! Al registrar componentes globalmente con Vue.component, esta paradoja se resuelve automáticamente. Si necesita/importa componentes utilizando un sistema de módulos, por ejemplo, a través de Webpack o Browserify, obtendrá un error:
+
+```
+
+Failed to mount component: template or render function not defined.
+
+```
+
+Para explicar lo que está sucediendo, llamemos a nuestros componentes A y B. El sistema de módulos ve que necesita A, pero primero A necesita a B, pero B necesita a A, pero A necesita a B, etc. Está atascado en un bucle, sin saber cómo resolver completamente ninguno de los dos componentes sin resolver primero el otro. Para arreglar esto, necesitamos darle al sistema modular un punto en el que pueda decir: "A necesita a B eventualmente, pero no hay necesidad de resolver a B primero".
+
+En nuestro caso, hagamos de este punto el componente de `tree-folder`. Sabemos que el hijo que crea la paradoja es el componente `tree-folder-contents`, así que esperaremos hasta el gancho del ciclo de vida `beforeCreate para registrarlo`:
+
+JS
+
+```
+beforeCreate: function () {
+  this.$options.components.TreeFolderContents = require('./tree-folder-contents.vue').default
+}
+
+```
+
+Ó alternativamente podemos usar webpacks asincrono `ìmport` cuando registre la componente localmente:
+
+JS
+
+```
+components: {
+  TreeFolderContents: () => import('./tree-folder-contents.vue')
+}
+
+```
+
+## Definiciones de plantillas alternativas
+
+### Plantillas en lineas
+
+Cuando el atributo especial `inline-template` es presentado en componentes hijos, la componente se usará su contenido interno como plantilla, en lugar de tratarlo como contenido distribuido. Esto permite una creación de plantillas más flexibles.
+
+HTML
+
+```
+<my-component inline-template>
+  <div>
+    <p>These are compiled as the component's own template.</p>
+    <p>Not parent's transclusion content.</p>
+  </div>
+</my-component>
+```
+
+Sin embargo, ` inline-template` hace que el alcance de sus plantillas sea más difícil de razonar. Como mejor práctica, prefiera definir plantillas dentro del componente utilizando la opción `template` o en un elemento `<template>` en un archivo `.vue`. 
+
+### X-Template
+
+Otra forma de definir plantillas es dentro de un elemento de script con el tipo text/x-template, luego haciendo referencia a la plantilla mediante un id. Por ejemplo: 
+
+HTML
+
+```
+<script type="text/x-template" id="hello-world-template">
+  <p>Hello hello hello</p>
+</script>
+```
+
+JS
+
+```
+Vue.component('hello-world', {
+  template: '#hello-world-template'
+})
+```
+
+## Controlando Actualizaciones
+
+
+Gracias al sistema Reactivity de Vue, siempre sabe cuándo actualizar (si lo utiliza correctamente). Sin embargo, hay casos extremos en los que puede querer forzar una actualización, a pesar del hecho de que no ha cambiado ningún dato reactivo. Además, hay otros casos en los que podría querer evitar actualizaciones innecesarias. 
+
+### Forzar una actualización 
+
+Si usted necesita forzar una actualización en Vue, en el 99. 99% de los casos, ha cometido un error en alguna parte. 
+
+Es posible que no haya tenido en cuenta las advertencias de detección de cambios con matrices u objetos, o que esté confiando en un estado que no es seguido por el sistema de reactividad de Vue, por ejemplo, con `date`.
+
+Sin embargo, si ha descartado lo anterior y se encuentra en esta situación extremadamente rara de tener que forzar manualmente una actualización, puede hacerlo con `$forceUpdate`. 
+
+### Componentes estáticos baratos con v-once
+
+Renderizar elementos HTML simples es muy rápido en Vue, pero a veces puede que tenga un componente que contenga mucho contenido estático. En estos casos, puede asegurarse de que sólo se evalúa una vez y luego se almacena en caché añadiendo la directiva `v-once` al elemento raíz, de esta forma: 
+
+JS
+
+```
+Vue.component('terms-of-service', {
+  template: `
+    <div v-once>
+      <h1>Terms of Service</h1>
+      ... a lot of static content ...
+    </div>
+  `
+})
+
+```
+
+## Introducir/Dejar y Transiciones de Lista ##
+
+### Transición de elementos individuales/componentes 
+
+Vue proporciona un componente de envoltura `transition`, lo que le permite añadir transiciones de entrada/salida para cualquier elemento o componente en los siguientes contextos: 
+
+1. Renderización condicional (usando `v-if`)
+2. Visualización condicional (usando `v-show`)
+3. Componentes dinamicos
+4. Nodos raíz de componentes
+
+
+HTML 
+
+```
+<div id="demo">
+  <button v-on:click="show = !show">
+    Toggle
+  </button>
+  <transition name="fade">
+    <p v-if="show">hello</p>
+  </transition>
+</div>
+```
+
+JS
+
+```
+new Vue({
+  el: '#demo',
+  data: {
+    show: true
+  }
+})
+
+
+```
+
+CSS 
+
+```
+.fade-enter-active, .fade-leave-active {
+  transition: opacity .5s;
+}
+.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+  opacity: 0;
+}
+
+
+```
+
+Cuando se inserta o se retira un elemento envuelto en un componente de transición `transition`, esto es lo que sucede:
+
+1. Vue detectará automáticamente si el elemento de destino tiene transiciones CSS o animaciones aplicadas. Si lo hace, las clases de transición de CSS se agregarán/quitarán en los tiempos apropiados.
+
+2. Si el componente de transición proporcionó hooks JavaScript, estos hooks se llamarán en el momento adecuado.
+
+3. Si no se detectan transiciones/animaciones CSS y no se proporcionan hooks JavaScript, las operaciones DOM para inserción y/o eliminación se ejecutarán inmediatamente en el siguiente cuadro (Nota: se trata de un cuadro de animación del navegador, diferente del concepto de Vue de `nextTick`).
+
+### Clases de transición
+
+Hay seis clases que se aplican para las transiciones de entrada/salida. 
+
+1. `v-enter`: Estado inicial para la entrada. Añadido antes de insertar el elemento, se retira un marco después de insertar el elemento.
+
+2. `v-enter-active`: Estado activo para entrar. Se aplica durante toda la fase de entrada. Se agrega antes de insertar el elemento y se retira cuando termina la transición/animación. Esta clase se puede utilizar para definir la duración, el retardo y la curva de relajación para la transición de entrada.
+
+3. `v-enter-to`: Sólo disponible en las versiones 2. 1. 8+. Estado final para la entrada. Se agregó un marco después de insertar el elemento (al mismo tiempo que se quita v-enter), se quita cuando termina la transición/animación.
+
+4. `v-leave`: Estado de partida de la licencia. Se añade inmediatamente cuando se activa una transición de salida, que se elimina después de un fotograma.
+
+5. `v-leave-active`: Estado activo para la licencia. Se aplica durante toda la fase de salida. Se añade inmediatamente cuando se activa la transición de salida y se elimina cuando finaliza la transición/animación. Esta clase se puede utilizar para definir la duración, el retardo y la curva de relajación para la transición de salida.
+
+6. `v-leave-to`: Sólo disponible en las versiones 2. 1. 8+. Estado final de la licencia. Se agrega un fotograma después de que se activa una transición de salida (al mismo tiempo que se elimina el `v-leave`), que se elimina cuando finaliza la transición/animación.
+
+
+Cada una de estas clases irá precedida del nombre de la transición. Aquí el prefijo v- es el predeterminado cuando se utiliza un elemento `<transition>` sin nombre. Si utiliza `<transition name="my-transición">`; por ejemplo, entonces la clase v-enter será en su lugar my-transition-enter.
+
+`v-enter-active y v-leave-active` le ofrecen la posibilidad de especificar diferentes curvas de relajación para las transiciones de entrada/salida, de las que verá un ejemplo en la siguiente sección. 
+
+
+### CSS Transitions
+
+
+Uno de los mas usados tipos de transiciones css:
+
+HTML
+
+```
+<div id="example-1">
+  <button @click="show = !show">
+    Toggle render
+  </button>
+  <transition name="slide-fade">
+    <p v-if="show">hello</p>
+  </transition>
+</div>
+```
+
+JS
+
+```
+
+new Vue({
+  el: '#example-1',
+  data: {
+    show: true
+  }
+})
+```
+
+CSS
+
+```
+/* Enter and leave animations can use different */
+/* durations and timing functions.              */
+.slide-fade-enter-active {
+  transition: all .3s ease;
+}
+.slide-fade-leave-active {
+  transition: all .8s cubic-bezier(1.0, 0.5, 0.8, 1.0);
+}
+.slide-fade-enter, .slide-fade-leave-to
+/* .slide-fade-leave-active below version 2.1.8 */ {
+  transform: translateX(10px);
+  opacity: 0;
+}
+
+```
+
+# Animaciones CSS
+
+Las animaciones CSS se aplican de la misma manera que las transiciones CSS, con la diferencia de que `v-enter` no se elimina inmediatamente después de insertar el elemento, sino en un evento `animationend`.
+
+He aquí un ejemplo, omitiendo las reglas CSS prefijadas en aras de la brevedad: 
+
+HTML
+
+```
+<div id="example-2">
+  <button @click="show = !show">Toggle show</button>
+  <transition name="bounce">
+    <p v-if="show">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris facilisis enim libero, at lacinia diam fermentum id. Pellentesque habitant morbi tristique senectus et netus.</p>
+  </transition>
+</div>
+```
+
+JS
+
+```
+new Vue({
+  el: '#example-2',
+  data: {
+    show: true
+  }
+})
+
+```
+
+CSS
+```
+.bounce-enter-active {
+  animation: bounce-in .5s;
+}
+.bounce-leave-active {
+  animation: bounce-in .5s reverse;
+}
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+```
+
+### Clases de transición personalizada
+
+También puede especificar clases de transición personalizadas proporcionando los siguientes atributos: 
+
+
+    1. enter-class
+    2. enter-active-class
+    3. enter-to-class (2.1.8+)
+    4. leave-class
+    5. leave-active-class
+    6. leave-to-class (2.1.8+)
+
+
+Esto invalidará los nombres de clase convencionales. Esto es especialmente útil cuando se desea combinar el sistema de transición de Vue con una biblioteca de animación CSS existente, como Animate. css. 
+
+HTML
+
+```
+<link href="https://cdn.jsdelivr.net/npm/animate.css@3.5.1" rel="stylesheet" type="text/css">
+
+<div id="example-3">
+  <button @click="show = !show">
+    Toggle render
+  </button>
+  <transition
+    name="custom-classes-transition"
+    enter-active-class="animated tada"
+    leave-active-class="animated bounceOutRight"
+  >
+    <p v-if="show">hello</p>
+  </transition>
+</div>
+
+```
+
+JS
+
+```
+new Vue({
+  el: '#example-3',
+  data: {
+    show: true
+  }
+})
+
+```
+
+### Usando Transiciones y Animaciones Juntas
+
+Vue necesita conectar a los oyentes del evento para saber cuándo ha terminado una transición. Puede ser `transitionend` o `animationend`, dependiendo del tipo de reglas CSS aplicadas. Si sólo utiliza uno u otro, Vue puede detectar automáticamente el tipo correcto.
+
+Sin embargo, en algunos casos es posible que desee tener ambos en el mismo elemento, por ejemplo, tener una animación CSS activada por Vue, junto con un efecto de transición CSS en el flotador. En estos casos, deberá declarar explícitamente el tipo que desea que Vue tenga en un atributo de `type`, con un valor de `animation` o de `transition`. 
+
+### Duraciones de transición explícitas 2.2.0+
+
+En la mayoría de los casos, Vue puede determinar automáticamente cuándo ha terminado la transición. Por defecto, Vue espera el primer evento `transitionend` o `animationend` en el elemento de transición raíz. Sin embargo, esto no siempre puede ser deseado - por ejemplo, podemos tener una secuencia de transición coreografiada donde algunos elementos internos anidados tienen una transición retardada o una duración de transición más larga que el elemento de transición raíz.
+
+En tales casos, puede especificar una duración de transición explícita (en milisegundos) utilizando la duración `duration` prop en el componente `<transición>`: 
+
+HTML
+
+```
+<transition :duration="1000">...</transition>
+```
+
+HTML
+
+```
+
+<transition :duration="{ enter: 500, leave: 800 }">...</transition>
+
+```
+
+Javascript hooks
+
+HTML
+```
+
+<transition
+  v-on:before-enter="beforeEnter"
+  v-on:enter="enter"
+  v-on:after-enter="afterEnter"
+  v-on:enter-cancelled="enterCancelled"
+
+  v-on:before-leave="beforeLeave"
+  v-on:leave="leave"
+  v-on:after-leave="afterLeave"
+  v-on:leave-cancelled="leaveCancelled"
+>
+  <!-- ... -->
+</transition>
+
+
+```
+
+JS
+
+```
+// ...
+methods: {
+  // --------
+  // ENTERING
+  // --------
+
+  beforeEnter: function (el) {
+    // ...
+  },
+  // the done callback is optional when
+  // used in combination with CSS
+  enter: function (el, done) {
+    // ...
+    done()
+  },
+  afterEnter: function (el) {
+    // ...
+  },
+  enterCancelled: function (el) {
+    // ...
+  },
+
+  // --------
+  // LEAVING
+  // --------
+
+  beforeLeave: function (el) {
+    // ...
+  },
+  // the done callback is optional when
+  // used in combination with CSS
+  leave: function (el, done) {
+    // ...
+    done()
+  },
+  afterLeave: function (el) {
+    // ...
+  },
+  // leaveCancelled only available with v-show
+  leaveCancelled: function (el) {
+    // ...
+  }
+}
+```
+
+Estos hooks  se pueden utilizar en combinación con transiciones/animaciones CSS o por sí solos. 
+
+
+HTML
+
+```
+<!--
+Velocity works very much like jQuery.animate and is
+a great option for JavaScript animations
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.3/velocity.min.js"></script>
+
+<div id="example-4">
+  <button @click="show = !show">
+    Toggle
+  </button>
+  <transition
+    v-on:before-enter="beforeEnter"
+    v-on:enter="enter"
+    v-on:leave="leave"
+    v-bind:css="false"
+  >
+    <p v-if="show">
+      Demo
+    </p>
+  </transition>
+</div>
+
+```
+
+JS
+
+
+```
+new Vue({
+  el: '#example-4',
+  data: {
+    show: false
+  },
+  methods: {
+    beforeEnter: function (el) {
+      el.style.opacity = 0
+    },
+    enter: function (el, done) {
+      Velocity(el, { opacity: 1, fontSize: '1.4em' }, { duration: 300 })
+      Velocity(el, { fontSize: '1em' }, { complete: done })
+    },
+    leave: function (el, done) {
+      Velocity(el, { translateX: '15px', rotateZ: '50deg' }, { duration: 600 })
+      Velocity(el, { rotateZ: '100deg' }, { loop: 2 })
+      Velocity(el, {
+        rotateZ: '45deg',
+        translateY: '30px',
+        translateX: '30px',
+        opacity: 0
+      }, { complete: done })
+    }
+  }
+})
+
+
+```
+
+### Transiciones en el renderizado inicial 
+
+Si tambien se requiere aplicar una transición en el nodo de un render inicial, se puede agregar el atributo `appear`:
+
+HTML
+
+```
+<transition appear>
+  <!-- ... -->
+</transition>
+```
+
+Por defecto, utilizará las transiciones especificadas para entrar y salir. Sin embargo, si lo desea, también puede especificar clases CSS personalizadas: 
+
+HTML
+```
+<transition
+  appear
+  appear-class="custom-appear-class"
+  appear-to-class="custom-appear-to-class" (2.1.8+)
+  appear-active-class="custom-appear-active-class"
+>
+  <!-- ... -->
+</transition>
+```
+
+Y LOS HOOKS PERSONALIZADOS DE JAVASCRIPT:
+
+HTML
+
+```
+
+<transition
+  appear
+  v-on:before-appear="customBeforeAppearHook"
+  v-on:appear="customAppearHook"
+  v-on:after-appear="customAfterAppearHook"
+  v-on:appear-cancelled="customAppearCancelledHook"
+>
+  <!-- ... -->
+</transition>
+
+```
+
+En el ejemplo anterior, el atributo appear o el HOOK `v-on:appear` harán que aparezca una transición.
+
+## Transición entre elementos 
+
+Discutimos la transición entre componentes más adelante, pero también se puede hacer la transición entre elementos crudos usando `v-if/v-else`. Una de las transiciones más comunes de dos elementos es entre un contenedor de listas y un mensaje que describe una lista vacía: 
+
+HTML
+
+```
+<transition>
+  <table v-if="items.length > 0">
+    <!-- ... -->
+  </table>
+  <p v-else>Sorry, no items found.</p>
+</transition>
+```
+
+Al alternar entre elementos que tienen el mismo nombre de etiqueta, debe decirle a Vue que son elementos distintos dándoles atributos `key` únicos. De lo contrario, el compilador de Vue sólo reemplazará el contenido del elemento por eficiencia. Incluso cuando técnicamente es innecesario, se considera una buena práctica el teclear siempre múltiples ítems dentro de un componente `<transición>`
+
+Por ejemplo:
+
+HTML
+
+```
+<transition>
+  <button v-if="isEditing" key="save">
+    Save
+  </button>
+  <button v-else key="edit">
+    Edit
+  </button>
+</transition>
+
+```
+
+En estos casos, también puede utilizar el atributo `key` para la transición entre diferentes estados del mismo elemento. En lugar de usar `v-if y v-else`, el ejemplo anterior podría reescribirse como: 
+
+HTML
+
+```
+<transition>
+  <button v-bind:key="isEditing">
+    {{ isEditing ? 'Save' : 'Edit' }}
+  </button>
+</transition>
+```
+
+En realidad, es posible realizar la transición entre cualquier número de elementos, ya sea utilizando múltiples `v-if` o vinculando un único elemento a una propiedad dinámica. Por ejemplo: 
+
+HTML
+
+```
+<transition>
+  <button v-if="docState === 'saved'" key="saved">
+    Edit
+  </button>
+  <button v-if="docState === 'edited'" key="edited">
+    Save
+  </button>
+  <button v-if="docState === 'editing'" key="editing">
+    Cancel
+  </button>
+</transition>
+
+```
+
+Tambien podemos escribirlo como:
+
+HTML
+
+```
+<transition>
+  <button v-bind:key="docState">
+    {{ buttonMessage }}
+  </button>
+</transition>
+
+
+```
+
+JS
+
+```
+
+// ...
+computed: {
+  buttonMessage: function () {
+    switch (this.docState) {
+      case 'saved': return 'Edit'
+      case 'edited': return 'Save'
+      case 'editing': return 'Cancel'
+    }
+  }
+}
+
+
+```
+
+### Modos de transición
+
+
+Pero todavía hay un problema. ver el siguiente link de la sección "transition Modes" : [ver ejemplo](https://vuejs.org/v2/guide/transitions.html)
+
+A medida que se realiza la transición entre el botón "on" y el botón "off", se renderizan ambos botones, uno de ellos con transición de salida y el otro con transición de entrada. Este es el comportamiento por defecto de `<transición>` - la entrada y la salida ocurren simultáneamente. 
+
+A veces esto funciona muy bien, como cuando los elementos en transición están absolutamente colocados uno encima del otro o en transición. (ver el enlace anterior)
+ 
+
+Sin embargo, las transiciones simultáneas de entrada y salida no siempre son deseables, por lo que Vue ofrece algunos modos de transición alternativos:
+
+1. in-out: El nuevo elemento entra primero, luego cuando se completa, el elemento de corriente sale.
+
+2. out-in: El elemento de corriente se transiciona primero hacia afuera, luego cuando se completa, el nuevo elemento se transiciona hacia adentro.
+
+Ahora vamos a actualizar la transición para nuestros botones on/off con out-in: 
+
+HTML
+
+```
+<transition name="fade" mode="out-in">
+  <!-- ... the buttons ... -->
+</transition>
+
+```
+
+## Transición entre Componentes
+
+La transición entre componentes es aún más sencilla: ni siquiera necesitamos el atributo `key`. En su lugar, envolvemos un componente dinámico: 
+
+HTML
+
+```
+<transition name="component-fade" mode="out-in">
+  <component v-bind:is="view"></component>
+</transition>
+
+```
+
+JS
+
+```
+new Vue({
+  el: '#transition-components-demo',
+  data: {
+    view: 'v-a'
+  },
+  components: {
+    'v-a': {
+      template: '<div>Component A</div>'
+    },
+    'v-b': {
+      template: '<div>Component B</div>'
+    }
+  }
+})
+
+```
+
+CSS
+
+```
+
+.component-fade-enter-active, .component-fade-leave-active {
+  transition: opacity .3s ease;
+}
+.component-fade-enter, .component-fade-leave-to
+/* .component-fade-leave-active below version 2.1.8 */ {
+  opacity: 0;
+}
+
+```
+
+## Transiciones List
+
+Hasta ahora hemos manejado las transiciones:
+
+1. Nodos Individuales
+2. Multiples nodos donde solamente 1 es rederizado a la vez
+
+
+Entonces, ¿qué pasa cuando tenemos una lista completa de elementos que queremos renderizar simultáneamente, por ejemplo con v-for? En este caso, usaremos el componente `<transition-group>`. Sin embargo, antes de que nos sumerjamos en un ejemplo, hay algunas cosas que es importante saber acerca de este componente:
+
+A diferencia de `<transición>`, muestra un elemento real: un `<span>` por defecto. Puede cambiar el elemento que se renderiza con el atributo `tag`.
+Los modos de transición no están disponibles, porque ya no estamos alternando entre elementos mutuamente excluyentes.
+Los elementos del interior siempre deben tener un atributo `key` único. 
+
+## Entrada/salida de la lista de transiciones 
+
+Ahora vamos a sumergirnos en un ejemplo, haciendo la transición entrada y salida usando las mismas clases CSS que hemos usado anteriormente: 
+
+HTML
+
+```
+<div id="list-demo">
+  <button v-on:click="add">Add</button>
+  <button v-on:click="remove">Remove</button>
+  <transition-group name="list" tag="p">
+    <span v-for="item in items" v-bind:key="item" class="list-item">
+      {{ item }}
+    </span>
+  </transition-group>
+</div>
+
+```
+
+JS
+
+```
+new Vue({
+  el: '#list-demo',
+  data: {
+    items: [1,2,3,4,5,6,7,8,9],
+    nextNum: 10
+  },
+  methods: {
+    randomIndex: function () {
+      return Math.floor(Math.random() * this.items.length)
+    },
+    add: function () {
+      this.items.splice(this.randomIndex(), 0, this.nextNum++)
+    },
+    remove: function () {
+      this.items.splice(this.randomIndex(), 1)
+    },
+  }
+})
+
+```
+
+CSS
+
+```
+.list-item {
+  display: inline-block;
+  margin-right: 10px;
+}
+.list-enter-active, .list-leave-active {
+  transition: all 1s;
+}
+.list-enter, .list-leave-to /* .list-leave-active below version 2.1.8 */ {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+```
+
+[ver ejemplo: List Entering/Leaving Transitions](https://vuejs.org/v2/guide/transitions.html)
+
+
+Hay un problema con este ejemplo, cuando queremos agregar o remover un item, los que lo rodean instantáneamente entran en su nuevo lugar en lugar de hacer una transición sin problemas. Lo arreglaremos más tarde. 
+
+### Transiciones de movimiento de lista 
+
+
+El componente `<transition-group>` tiene otro truco bajo la manga. No sólo puede animar la entrada y la salida, sino también los cambios de posición. El único concepto nuevo que necesita conocer para utilizar esta función es la adición de la clase `v-move`, que se añade cuando los elementos cambian de posición. Al igual que las otras clases, su prefijo coincidirá con el valor de un atributo `name` proporcionado y también puede especificar manualmente una clase con el atributo de `move-class`.
+
+Esta clase es mayormente útil para especificar el tiempo de transición y la curva de relajación, como se verá a continuación:
+
+HTML
+
+```
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.14.1/lodash.min.js"></script>
+
+<div id="flip-list-demo" class="demo">
+  <button v-on:click="shuffle">Shuffle</button>
+  <transition-group name="flip-list" tag="ul">
+    <li v-for="item in items" v-bind:key="item">
+      {{ item }}
+    </li>
+  </transition-group>
+</div>
+
+
+```
+
+JS
+
+```
+new Vue({
+  el: '#flip-list-demo',
+  data: {
+    items: [1,2,3,4,5,6,7,8,9]
+  },
+  methods: {
+    shuffle: function () {
+      this.items = _.shuffle(this.items)
+    }
+  }
+})
+
+```
+
+CSS
+
+
+```
+
+.flip-list-move {
+  transition: transform 1s;
+}
+
+```
+
+
+VER EJEMPLO: [ver ejemplo: List Move Transitions](https://vuejs.org/v2/guide/transitions.html)
+
+Tambien tenemos el siguiente:
+
+HTML
+
+```
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.14.1/lodash.min.js"></script>
+
+<div id="list-complete-demo" class="demo">
+  <button v-on:click="shuffle">Shuffle</button>
+  <button v-on:click="add">Add</button>
+  <button v-on:click="remove">Remove</button>
+  <transition-group name="list-complete" tag="p">
+    <span
+      v-for="item in items"
+      v-bind:key="item"
+      class="list-complete-item"
+    >
+      {{ item }}
+    </span>
+  </transition-group>
+</div>
+
+
+```
+
+JS 
+
+
+```
+
+new Vue({
+  el: '#list-complete-demo',
+  data: {
+    items: [1,2,3,4,5,6,7,8,9],
+    nextNum: 10
+  },
+  methods: {
+    randomIndex: function () {
+      return Math.floor(Math.random() * this.items.length)
+    },
+    add: function () {
+      this.items.splice(this.randomIndex(), 0, this.nextNum++)
+    },
+    remove: function () {
+      this.items.splice(this.randomIndex(), 1)
+    },
+    shuffle: function () {
+      this.items = _.shuffle(this.items)
+    }
+  }
+})
+
+
+```
+
+CSS
+
+
+```
+
+.list-complete-item {
+  transition: all 1s;
+  display: inline-block;
+  margin-right: 10px;
+}
+.list-complete-enter, .list-complete-leave-to
+/* .list-complete-leave-active below version 2.1.8 */ {
+  opacity: 0;
+  transform: translateY(30px);
+}
+.list-complete-leave-active {
+  position: absolute;
+}
+
+
+```
+(VER EN EL LINK ANTERIOR EL EJEMPLO 2)
+
+
+
+Una nota importante es que estas transiciones FLIP no funcionan con elementos configurados para `display: inline`. Como alternativa, puede utilizar `display: inline-block` o colocar elementos en un contexto flexible. 
+
+
+
+ [Ejemplo: sudoku ](https://vuejs.org/v2/guide/transitions.html)
+
+
+ ### transiciones de lista escalonada
+
+
+Al comunicarse con transiciones JavaScript a través de atributos de datos, también es posible escalonar las transiciones en una lista: 
+
+ HTML
+
+ ```
+<script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.3/velocity.min.js"></script>
+
+<div id="staggered-list-demo">
+  <input v-model="query">
+  <transition-group
+    name="staggered-fade"
+    tag="ul"
+    v-bind:css="false"
+    v-on:before-enter="beforeEnter"
+    v-on:enter="enter"
+    v-on:leave="leave"
+  >
+    <li
+      v-for="(item, index) in computedList"
+      v-bind:key="item.msg"
+      v-bind:data-index="index"
+    >{{ item.msg }}</li>
+  </transition-group>
+</div>
+
+ ```
+
+
+ JS
+
+  ```
+
+new Vue({
+  el: '#staggered-list-demo',
+  data: {
+    query: '',
+    list: [
+      { msg: 'Bruce Lee' },
+      { msg: 'Jackie Chan' },
+      { msg: 'Chuck Norris' },
+      { msg: 'Jet Li' },
+      { msg: 'Kung Fury' }
+    ]
+  },
+  computed: {
+    computedList: function () {
+      var vm = this
+      return this.list.filter(function (item) {
+        return item.msg.toLowerCase().indexOf(vm.query.toLowerCase()) !== -1
+      })
+    }
+  },
+  methods: {
+    beforeEnter: function (el) {
+      el.style.opacity = 0
+      el.style.height = 0
+    },
+    enter: function (el, done) {
+      var delay = el.dataset.index * 150
+      setTimeout(function () {
+        Velocity(
+          el,
+          { opacity: 1, height: '1.6em' },
+          { complete: done }
+        )
+      }, delay)
+    },
+    leave: function (el, done) {
+      var delay = el.dataset.index * 150
+      setTimeout(function () {
+        Velocity(
+          el,
+          { opacity: 0, height: 0 },
+          { complete: done }
+        )
+      }, delay)
+    }
+  }
+})
+
+   ```
+
+  VER EJEMPLO: BUSCADOR [Staggering List Transitions](https://vuejs.org/v2/guide/transitions.html)
+
+
+  ## Transiciones reusables
+
+  Las transiciones pueden ser reutilizadas a través del sistema de componentes de Vue. Para crear una transición reutilizable, todo lo que tiene que hacer es colocar un componente `<transition>` o `transition-group>` en la raíz, y luego pasar los hijos al componente de transición. 
+
+  Aqui un ejemplo:
+
+  JS
+```
+Vue.component('my-special-transition', {
+  template: '\
+    <transition\
+      name="very-special-transition"\
+      mode="out-in"\
+      v-on:before-enter="beforeEnter"\
+      v-on:after-enter="afterEnter"\
+    >\
+      <slot></slot>\
+    </transition>\
+  ',
+  methods: {
+    beforeEnter: function (el) {
+      // ...
+    },
+    afterEnter: function (el) {
+      // 
+    }
+  }
+})
+ ```
+
+Y componentes funcionables son especialmente adecuados para esta tarea: 
+
+JS
+
+ ```
+
+
+Vue.component('my-special-transition', {
+  functional: true,
+  render: function (createElement, context) {
+    var data = {
+      props: {
+        name: 'very-special-transition',
+        mode: 'out-in'
+      },
+      on: {
+        beforeEnter: function (el) {
+          // ...
+        },
+        afterEnter: function (el) {
+          // ...
+        }
+      }
+    }
+    return createElement('transition', data, context.children)
+  }
+})
+
+ ```
+
+ ## Transiciones DINAMICAS
+
+El ejemplo más básico de una transición dinámica vincula el atributo `name` a una propiedad dinámica. 
+
+HTML
+ ```
+<transition v-bind:name="transitionName">
+  <!-- ... -->
+</transition>
+ ```
+
+
+ Esto puede ser útil cuando ha definido transiciones/animaciones CSS utilizando las convenciones de clase de transición de Vue y desea cambiar entre ellas.
+
+Sin embargo, en realidad, cualquier atributo de transición puede ser ligado dinámicamente. Y no son sólo atributos. Dado que los HOOK de eventos son métodos, tienen acceso a cualquier dato en el contexto. Esto significa que dependiendo del estado de su componente, sus transiciones JavaScript pueden comportarse de forma diferente. 
+
+HTML
+
+ ```
+<script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.3/velocity.min.js"></script>
+
+<div id="dynamic-fade-demo" class="demo">
+  Fade In: <input type="range" v-model="fadeInDuration" min="0" v-bind:max="maxFadeDuration">
+  Fade Out: <input type="range" v-model="fadeOutDuration" min="0" v-bind:max="maxFadeDuration">
+  <transition
+    v-bind:css="false"
+    v-on:before-enter="beforeEnter"
+    v-on:enter="enter"
+    v-on:leave="leave"
+  >
+    <p v-if="show">hello</p>
+  </transition>
+  <button
+    v-if="stop"
+    v-on:click="stop = false; show = false"
+  >Start animating</button>
+  <button
+    v-else
+    v-on:click="stop = true"
+  >Stop it!</button>
+</div>
+
+  ```
+
+JS
+
+
+  ```
+
+new Vue({
+  el: '#dynamic-fade-demo',
+  data: {
+    show: true,
+    fadeInDuration: 1000,
+    fadeOutDuration: 1000,
+    maxFadeDuration: 1500,
+    stop: true
+  },
+  mounted: function () {
+    this.show = false
+  },
+  methods: {
+    beforeEnter: function (el) {
+      el.style.opacity = 0
+    },
+    enter: function (el, done) {
+      var vm = this
+      Velocity(el,
+        { opacity: 1 },
+        {
+          duration: this.fadeInDuration,
+          complete: function () {
+            done()
+            if (!vm.stop) vm.show = false
+          }
+        }
+      )
+    },
+    leave: function (el, done) {
+      var vm = this
+      Velocity(el,
+        { opacity: 0 },
+        {
+          duration: this.fadeOutDuration,
+          complete: function () {
+            done()
+            vm.show = true
+          }
+        }
+      )
+    }
+  }
+})
+  
+  ```
+
+  [VER EJEMPLO Dynamic Transitions](https://vuejs.org/v2/guide/transitions.html)
+
+  ## REUSABILIDAD Y COMPOSICIÓN ## 
+
+  ## MEZCLAS
+
+  ## Básicos
+
+  Las mezclas son una forma flexible de distribuir funcionalidades reutilizables para los componentes Vue. Un objeto mixin puede contener cualquier opción de componente. Cuando un componente utiliza una mezcla, todas las opciones del mixin se "mezclan" en las propias opciones del componente. 
+
+  JS
+
+  ```
+  // define a mixin object
+var myMixin = {
+  created: function () {
+    this.hello()
+  },
+  methods: {
+    hello: function () {
+      console.log('hello from mixin!')
+    }
+  }
+}
+
+// define a component that uses this mixin
+var Component = Vue.extend({
+  mixins: [myMixin]
+})
+
+var component = new Component() // => "hello from mixin!"
+
+
+  ```
+
+  ## Fusión de opciones(Option Merging)
+
+  JS
+
+
+```
+
+var mixin = {
+  data: function () {
+    return {
+      message: 'hello',
+      foo: 'abc'
+    }
+  }
+}
+
+new Vue({
+  mixins: [mixin],
+  data: function () {
+    return {
+      message: 'goodbye',
+      bar: 'def'
+    }
+  },
+  created: function () {
+    console.log(this.$data)
+    // => { message: "goodbye", foo: "abc", bar: "def" }
+  }
+})
+
+  ```
+
+  Las funciones de HOOK con el mismo nombre se fusionan en una matriz para que se puedan llamar a todas ellas. Los HOOK de mezcla se llamarán antes que los HOOK propios del componente. 
+
+
+JS
+
+
+  ```
+var mixin = {
+  created: function () {
+    console.log('mixin hook called')
+  }
+}
+
+new Vue({
+  mixins: [mixin],
+  created: function () {
+    console.log('component hook called')
+  }
+})
+
+// => "mixin hook called"
+// => "component hook called"
+ 
+  ```
+
+Las opciones que esperan valores de objeto, por ejemplo métodos, componentes y directivas, se fusionarán en el mismo objeto. Las opciones del componente tendrán prioridad cuando haya claves en conflicto en estos objetos: 
+
+JS
+
+ ```
+var mixin = {
+  methods: {
+    foo: function () {
+      console.log('foo')
+    },
+    conflicting: function () {
+      console.log('from mixin')
+    }
+  }
+}
+
+var vm = new Vue({
+  mixins: [mixin],
+  methods: {
+    bar: function () {
+      console.log('bar')
+    },
+    conflicting: function () {
+      console.log('from self')
+    }
+  }
+})
+
+vm.foo() // => "foo"
+vm.bar() // => "bar"
+vm.conflicting() // => "from self"
+
+ ```
+
+Tenga en cuenta que las mismas estrategias de fusión se utilizan en `Vue.extend()`. 
+
+### Global Mixin (Mezclas globales)
+
+
+También puede aplicar una mezcla globalmente. Usar con precaución! Una vez que aplique un mixin globalmente, afectará a cada instancia de Vue creada posteriormente. Cuando se utiliza correctamente, se puede utilizar para inyectar lógica de procesamiento para opciones personalizadas. 
+
+JS 
+
+```
+
+// inject a handler for `myOption` custom option
+Vue.mixin({
+  created: function () {
+    var myOption = this.$options.myOption
+    if (myOption) {
+      console.log(myOption)
+    }
+  }
+})
+
+new Vue({
+  myOption: 'hello!'
+})
+// => "hello!"
+
+```
+
+## Estrategias de fusión de opciones personalizadas 
+
+Cuando las opciones personalizadas se fusionan, utilizan la estrategia predeterminada que sobrescribe el valor existente. Si desea que una opción personalizada se fusione usando lógica personalizada, necesita adjuntar una función a `Vue. config.optionMergeStrategies`: 
+
+JS
+
+```
+Vue.config.optionMergeStrategies.myOption = function (toVal, fromVal) {
+  // return mergedVal
+}
+```
+
+Para la mayoría de las opciones basadas en objetos, puede utilizar la misma estrategia que utilizan los métodos: 
+
+JS
+
+```
+var strategies = Vue.config.optionMergeStrategies
+strategies.myOption = strategies.methods
+
+```
+
+Un ejemplo más avanzado se puede encontrar en la estrategia de fusión 1.x de Vuex: 
+
+JS
+
+```
+const merge = Vue.config.optionMergeStrategies.computed
+Vue.config.optionMergeStrategies.vuex = function (toVal, fromVal) {
+  if (!toVal) return fromVal
+  if (!fromVal) return toVal
+  return {
+    getters: merge(toVal.getters, fromVal.getters),
+    state: merge(toVal.state, fromVal.state),
+    actions: merge(toVal.actions, fromVal.actions)
+  }
+}
+
+```
+
+## Directivas personalizadas
+
+Cuando se carga la página, ese elemento gana enfoque (nota: `autofocus` no funciona en Safari móvil). De hecho, si no ha hecho clic en nada más desde que visitó esta página, la entrada de arriba debe ser enfocada ahora. Ahora construyamos la directiva que logre esto: 
+
+JS
+
+```
+// Register a global custom directive called `v-focus`
+Vue.directive('focus', {
+  // When the bound element is inserted into the DOM...
+  inserted: function (el) {
+    // Focus the element
+    el.focus()
+  }
+})
+
+```
+
+Si desea registrar una directiva localmente, los componentes también aceptan la opción de `directives`:
+
+JS
+
+```
+directives: {
+  focus: {
+    // directive definition
+    inserted: function (el) {
+      el.focus()
+    }
+  }
+}
+
+```
+
+Luego, en una plantilla, puede utilizar el nuevo atributo v-focus en cualquier elemento, como este: 
+
+HTML
+
+```
+<input v-focus>
+
+```
+
+## FUNCIONES HOOK
+
+
+Un objeto de definición de directiva puede proporcionar varias funciones de HOOK (todas opcionales):
+
+1. bind: se llama sólo una vez, cuando la directiva está ligada por primera vez al elemento. Aquí es donde se puede realizar el trabajo de preparación de una sola vez.
+
+2. inserted: llamado cuando el elemento encuadernado ha sido insertado en su nodo padre (esto sólo garantiza la presencia del nodo padre, no necesariamente en el documento).
+
+3. update: llamado después de que el VNode del componente que contiene se haya actualizado, pero posiblemente antes de que sus hijos lo hayan hecho. El valor de la directiva puede o no haber cambiado, pero puede omitir actualizaciones innecesarias comparando los valores actuales y antiguos de la encuadernación (ver más adelante sobre los argumentos hook). 
+
+
+4. ComponentUpdated: llamado después de que el VNode del componente que contiene y los VNodes de sus hijos se hayan actualizado.
+
+5. unbind: se llama sólo una vez, cuando la directiva no está ligada al elemento.
+
+Exploraremos los argumentos pasados a estos hook (es decir, el, binding, vnode y oldVnode) en la siguiente sección. 
+
+## Argumentos sobre la directiva hook
+
+Los hook de la directiva se pasan estos argumentos:
+
+1. el: El elemento al que está obligada la directiva. Esto se puede utilizar para manipular directamente el DOM.
+2. binding: Un objeto que contiene las siguientes propiedades.
+- name: El nombre de la directiva, sin el prefijo v-.
+- valor: El valor pasado a la directiva. Por ejemplo, en - v-my-directive="1 + 1";, el valor sería 2.
+- oldValue: El valor anterior, sólo disponible en `update` y `componentUpdated`. Está disponible independientemente de si el valor ha cambiado o no.
+- expression: La expresión del binding como un string. Por ejemplo, en `v-my-directive="1 + 1"`, la expresión sería "1 + 1".
+- arg: El argumento pasó a la directiva, si la hubiera. Por ejemplo, en `v-mi-directiva:foo`, el arg sería "foo".
+- modificadores: Un objeto que contiene modificadores, si los hay. Por ejemplo, en `v-my-directive.foo.bar`, el objeto modificador sería `{ foo: true, bar: true }`.
+3. vnode: El nodo virtual producido por el compilador de Vue. Consulte la API de VNode para obtener más detalles.
+4. oldVnode: El nodo virtual anterior, sólo disponible en los hook `update` y `componentUpdated`.
+
+Aparte de `el`, debe tratar estos argumentos como de sólo lectura y nunca modificarlos. Si necesita compartir información entre hook, se recomienda hacerlo a través del conjunto de datos del elemento. 
+
+Ejemplo:
+
+HTML
+```
+<div id="hook-arguments-example" v-demo:foo.a.b="message"></div>
+```
+JS
+
+```
+Vue.directive('demo', {
+  bind: function (el, binding, vnode) {
+    var s = JSON.stringify
+    el.innerHTML =
+      'name: '       + s(binding.name) + '<br>' +
+      'value: '      + s(binding.value) + '<br>' +
+      'expression: ' + s(binding.expression) + '<br>' +
+      'argument: '   + s(binding.arg) + '<br>' +
+      'modifiers: '  + s(binding.modifiers) + '<br>' +
+      'vnode keys: ' + Object.keys(vnode).join(', ')
+  }
+})
+
+new Vue({
+  el: '#hook-arguments-example',
+  data: {
+    message: 'hello!'
+  }
+})
+```
+Un ejemplo de una directiva personalizada que utiliza un argumento dinámico: 
+
+HTML
+```
+<div id="app">
+  <p>Scroll down the page</p>
+  <p v-tack:left="[dynamicleft]">I’ll now be offset from the left instead of the top</p>
+</div>
+```
+
+JS
+```
+
+Vue.directive('tack', {
+  bind(el, binding, vnode) {
+    el.style.position = 'fixed';
+    const s = (binding.arg == 'left' ? 'left' : 'top');
+    el.style[s] = binding.value + 'px';
+  }
+})
+
+// start app
+new Vue({
+  el: '#app',
+  data() {
+    return {
+      dynamicleft: 500
+    }
+  }
+})
+```
+
+## Atajos de funciones
+
+En muchos casos, es posible que desee el mismo comportamiento en `bind` y `update`, pero no se preocupe por los otros hook. Por ejemplo: 
+
+JS
+```
+Vue.directive('color-swatch', function (el, binding) {
+  el.style.backgroundColor = binding.value
+})
+
+```
+
+## Objetos literales
+
+Si su directiva necesita múltiples valores, también puede pasar un literal de objeto JavaScript. Recuerde, las directivas pueden tomar cualquier expresión JavaScript válida. 
+
+HTML
+
+```
+<div v-demo="{ color: 'white', text: 'hello!' }"></div>
+
+```
+
+JS
+
+```
+Vue.directive('demo', function (el, binding) {
+  console.log(binding.value.color) // => "white"
+  console.log(binding.value.text)  // => "hello!"
+})
+
+```
+
+## Funciones renderizados y JSX
+
+### Basic
+
+
+Vue recomienda usar plantillas para construir su HTML en la gran mayoría de los casos. Sin embargo, hay situaciones en las que realmente se necesita toda la potencia programática de JavaScript. Ahí es donde puede utilizar la función de `render`, una alternativa más cercana al compilador a las plantillas.
+
+Veamos un ejemplo sencillo en el que una función de render sería práctica. Supongamos que desea generar encabezados anclados:
+
+HTML
+```
+
+<h1>
+  <a name="hello-world" href="#hello-world">
+    Hello world!
+  </a>
+</h1>
+```
+
+Para el código HTML anterior, decide que desea esta interfaz de componente:
+
+HTML
+
+```
+<anchored-heading :level="1">Hello world!</anchored-heading
+
+```
+
+Cuando comienzas con un componente que solo genera un encabezado basado en la prop de `level`, rápidamente llegas a esto:
+
+HTML
+```
+<script type="text/x-template" id="anchored-heading-template">
+  <h1 v-if="level === 1">
+    <slot></slot>
+  </h1>
+  <h2 v-else-if="level === 2">
+    <slot></slot>
+  </h2>
+  <h3 v-else-if="level === 3">
+    <slot></slot>
+  </h3>
+  <h4 v-else-if="level === 4">
+    <slot></slot>
+  </h4>
+  <h5 v-else-if="level === 5">
+    <slot></slot>
+  </h5>
+  <h6 v-else-if="level === 6">
+    <slot></slot>
+  </h6>
+</script>
+
+```
+
+JS
+
+```
+
+Vue.component('anchored-heading', {
+  template: '#anchored-heading-template',
+  props: {
+    level: {
+      type: Number,
+      required: true
+    }
+  }
+})
+
+
+```
+
+Esa plantilla no estaria bien. No sólo es verbose, sino que estamos duplicando `<slot></slot>` para cada nivel de encabezado y tendremos que hacer lo mismo cuando añadamos el elemento ancla.
+
+Aunque las plantillas funcionan bien para la mayoría de los componentes, está claro que ésta no es una de ellas. Así que vamos a intentar reescribirlo con una función de `render`: 
+
+JS
+```
+
+Vue.component('anchored-heading', {
+  render: function (createElement) {
+    return createElement(
+      'h' + this.level,   // tag name
+      this.$slots.default // array of children
+    )
+  },
+  props: {
+    level: {
+      type: Number,
+      required: true
+    }
+  }
+})
+
+```
+
+
+
+Mucho más sencillo! Más o menos. El código es más corto, pero también requiere una mayor familiaridad con las propiedades de la instancia de Vue. En este caso, tienes que saber que cuando pasas hijos sin una directiva de v-slot a un componente, como en el caso de Hello world! dentro de `anchored-heading`, esos hijos se almacenan en la instancia del componente en `$slots.default`. 
+
+
+## Nodos, Árboles y el DOM Virtual 
+
+Antes de sumergirnos en las funciones de render, es importante saber un poco sobre el funcionamiento de los navegadores. Tomemos como ejemplo este HTML: 
+
+HTML
+```
+
+<div>
+  <h1>My title</h1>
+  Some text content
+  <!-- TODO: Add tagline  -->
+</div>
+
+
+```
+
+
+Cuando un navegador lea este código, construye un árbol de "nodos DOM" para ayudarlo a llevar un registro de todo, de la misma manera que usted podría construir un árbol genealógico para llevar un registro de su familia extendida.
+
+El árbol de nodos DOM para el HTML anterior tiene el siguiente aspecto:
+
+[ver nodes,trees, and the virtual DOM](https://vuejs.org/v2/guide/render-function.html)
+
+
+Cada elemento es un nodo. Cada trozo de texto es un nodo. Incluso los comentarios son nodos! Un nodo es sólo una parte de la página. Y como en un árbol genealógico, cada nodo puede tener hijos (es decir, cada pieza puede contener otras piezas).
+
+Actualizar todos estos nodos eficientemente puede ser difícil, pero afortunadamente, nunca tienes que hacerlo manualmente. En su lugar, usted le dice a Vue qué HTML quiere en la página, en una plantilla:
+
+HTML 
+
+```
+<h1>{{ blogTitle }}</h1>
+```
+
+O una función render:
+
+JS
+
+```
+
+render: function (createElement) {
+  return createElement('h1', this.blogTitle)
+}
+
+```
+
+Y en ambos casos, Vue mantiene automáticamente la página actualizada, incluso cuando `blogTitle` cambia. 
+
+### El virtual DOM
+
+Vue logra esto construyendo un DOM virtual para hacer un seguimiento de los cambios que necesita hacer en el DOM real. Echando un vistazo más de cerca a esta línea: 
+
+JS
+
+```
+return createElement('h1', this.blogTitle)
+
+```
+
+¿Qué es lo que está devolviendo `createElement`? No es exactamente un elemento DOM real. Tal vez podría llamarse `createNodeDescription`, ya que contiene información que describe a Vue qué tipo de nodo debe representar en la página, incluyendo descripciones de cualquier nodo hijo. Llamamos a esta descripción de nodo un "nodo virtual";, normalmente abreviado como VNode. "Virtual DOM"; es lo que llamamos el árbol entero de VNodes, construido por un árbol de componentes Vue. 
+
+
+## Argumentos createElement
+
+
+Lo siguiente con lo que tendrá que familiarizarse es con el uso de las funciones de plantilla en la función createElement. Aquí están los argumentos que createElement acepta:  
+
+JS
+
+```
+
+// @returns {VNode}
+createElement(
+  // {String | Object | Function}
+  // An HTML tag name, component options, or async
+  // function resolving to one of these. Required.
+  'div',
+
+  // {Object}
+  // A data object corresponding to the attributes
+  // you would use in a template. Optional.
+  {
+    // (see details in the next section below)
+  },
+
+  // {String | Array}
+  // Children VNodes, built using `createElement()`,
+  // or using strings to get 'text VNodes'. Optional.
+  [
+    'Some text comes first.',
+    createElement('h1', 'A headline'),
+    createElement(MyComponent, {
+      props: {
+        someProp: 'foobar'
+      }
+    })
+  ]
+)
+
+```
+
+### El objeto de datos en profundidad 
+
+Una cosa a tener en cuenta: al igual que `v-bind:class` y `v-bind:style` tienen un tratamiento especial en las plantillas, tienen sus propios campos de nivel superior en los objetos de datos de VNode. Este objeto también le permite enlazar atributos HTML normales así como propiedades DOM como innerHTML (esto reemplazaría a la directiva v-html): 
+
+JS
+
+```
+{
+  // Same API as `v-bind:class`, accepting either
+  // a string, object, or array of strings and objects.
+  class: {
+    foo: true,
+    bar: false
+  },
+  // Same API as `v-bind:style`, accepting either
+  // a string, object, or array of objects.
+  style: {
+    color: 'red',
+    fontSize: '14px'
+  },
+  // Normal HTML attributes
+  attrs: {
+    id: 'foo'
+  },
+  // Component props
+  props: {
+    myProp: 'bar'
+  },
+  // DOM properties
+  domProps: {
+    innerHTML: 'baz'
+  },
+  // Event handlers are nested under `on`, though
+  // modifiers such as in `v-on:keyup.enter` are not
+  // supported. You'll have to manually check the
+  // keyCode in the handler instead.
+  on: {
+    click: this.clickHandler
+  },
+  // For components only. Allows you to listen to
+  // native events, rather than events emitted from
+  // the component using `vm.$emit`.
+  nativeOn: {
+    click: this.nativeClickHandler
+  },
+  // Custom directives. Note that the `binding`'s
+  // `oldValue` cannot be set, as Vue keeps track
+  // of it for you.
+  directives: [
+    {
+      name: 'my-custom-directive',
+      value: '2',
+      expression: '1 + 1',
+      arg: 'foo',
+      modifiers: {
+        bar: true
+      }
+    }
+  ],
+  // Scoped slots in the form of
+  // { name: props => VNode | Array<VNode> }
+  scopedSlots: {
+    default: props => createElement('span', props.text)
+  },
+  // The name of the slot, if this component is the
+  // child of another component
+  slot: 'name-of-slot',
+  // Other special top-level properties
+  key: 'myKey',
+  ref: 'myRef',
+  // If you are applying the same ref name to multiple
+  // elements in the render function. This will make `$refs.myRef` become an
+  // array
+  refInFor: true
+}
+
+```
+
+### Ejemplos completados
+
+Con este conocimiento, ahora podemos terminar el componente que empezamos:
+
+JS
+```
+
+var getChildrenTextContent = function (children) {
+  return children.map(function (node) {
+    return node.children
+      ? getChildrenTextContent(node.children)
+      : node.text
+  }).join('')
+}
+
+Vue.component('anchored-heading', {
+  render: function (createElement) {
+    // create kebab-case id
+    var headingId = getChildrenTextContent(this.$slots.default)
+      .toLowerCase()
+      .replace(/\W+/g, '-')
+      .replace(/(^-|-$)/g, '')
+
+    return createElement(
+      'h' + this.level,
+      [
+        createElement('a', {
+          attrs: {
+            name: headingId,
+            href: '#' + headingId
+          }
+        }, this.$slots.default)
+      ]
+    )
+  },
+  props: {
+    level: {
+      type: Number,
+      required: true
+    }
+  }
+})
+
+```
+
+### Limitaciones
+
+Los VNode deben ser únicos:
+
+JS
+
+```
+render: function (createElement) {
+  var myParagraphVNode = createElement('p', 'hi')
+  return createElement('div', [
+    // Yikes - duplicate VNodes!
+    myParagraphVNode, myParagraphVNode
+  ])
+}
+```
+
+Si realmente desea duplicar el mismo elemento/componente muchas veces, puede hacerlo con una función de fábrica. Por ejemplo, la siguiente función de render es una forma perfectamente válida de renderizar 20 párrafos idénticos: 
+
+JS
+
+```
+render: function (createElement) {
+  return createElement('div',
+    Array.apply(null, { length: 20 }).map(function () {
+      return createElement('p', 'hi')
+    })
+  )
+}
+
+```
+
+## Sustitución de las características de la plantilla por JavaScript simple 
+
+### v-if and v-for
+
+Donde quiera que algo se pueda lograr fácilmente en JavaScript simple, las funciones de renderizado de Vue no proporcionan una alternativa patentada. Por ejemplo, en una plantilla que utiliza `v-if` y `v-for`: 
+
+HTML
+
+```
+<ul v-if="items.length">
+  <li v-for="item in items">{{ item.name }}</li>
+</ul>
+<p v-else>No items found.</p>
+
+```
+Esto puede ser reescrito con JavaScript's `if/else` y `map` en una función de render:
+
+JS
+
+```
+props: ['items'],
+render: function (createElement) {
+  if (this.items.length) {
+    return createElement('ul', this.items.map(function (item) {
+      return createElement('li', item.name)
+    }))
+  } else {
+    return createElement('p', 'No items found.')
+  }
+}
+
+```
+
+### v-model
+
+No hay una contraparte directa del `v-model` en las funciones de renderizado - tendrá que implementar la lógica usted mismo: 
+
+JS
+
+```
+
+props: ['value'],
+render: function (createElement) {
+  var self = this
+  return createElement('input', {
+    domProps: {
+      value: self.value
+    },
+    on: {
+      input: function (event) {
+        self.$emit('input', event.target.value)
+      }
+    }
+  })
+}
+```
+
+
+### Eventos y modificadores Key 
+
+
+Para el modificador de eventos `.passive`, `.capture` y `.once`. Vue ofrece prefijos que suelen ser usados con `on`:
+
+```
+.passive       -> &
+.capture       -> !
+.once          -> ~
+.capture.once or 
+.once.capture  -> ~!
+
+```
+
+Por ejemplo:
+
+```
+on: {
+  '!click': this.doThisInCapturingMode,
+  '~keyup': this.doThisOnce,
+  '~!mouseover': this.doThisOnceInCapturingMode
+}
+
+```
+
+Para todos los demás eventos y modificadores key, no se necesita ningún prefijo propietario, ya que puede utilizar métodos de eventos en el handler:
+
+```
+.stop     -> 	event.stopPropagation()
+.prevent 	-> event.preventDefault()
+.self 	  -> if (event.target !== event.currentTarget) return
+Keys:
+.enter, .13 -> if (event.keyCode !== 13) return (change 13 to another key code for other key modifiers)
+Modifiers Keys:
+.ctrl, .alt, .shift, .meta 	-> if (!event.ctrlKey) return (change ctrlKey to altKey, shiftKey, or metaKey, respectively)
+
+```
+
+Ejemplo:
+
+
+```
+on: {
+  keyup: function (event) {
+    // Abort if the element emitting the event is not
+    // the element the event is bound to
+    if (event.target !== event.currentTarget) return
+    // Abort if the key that went up is not the enter
+    // key (13) and the shift key was not held down
+    // at the same time
+    if (!event.shiftKey || event.keyCode !== 13) return
+    // Stop event propagation
+    event.stopPropagation()
+    // Prevent the default keyup handler for this element
+    event.preventDefault()
+    // ...
+  }
+}
+
+```
+
+# Slots
+
+Puede acceder al contenido estático de slot como Arrays of VNodes desde `this.$slots`: 
+
+JS
+```
+render: function (createElement) {
+  // `<div><slot></slot></div>`
+  return createElement('div', this.$slots.default)
+}
+
+
+```
+
+Y acceder a SLOTS de alcance como funciones que retornan a  VNodes desde `this.$scopedSlots`:
+
+JS
+
+```
+props: ['message'],
+render: function (createElement) {
+  // `<div><slot :text="message"></slot></div>`
+  return createElement('div', [
+    this.$scopedSlots.default({
+      text: this.message
+    })
+  ])
+}
+
+```
+
+Para pasar slots scoped a un componente hijo usando funciones de render, utilice el campo scopedSlots en los datos de VNode: 
+
+JS
+
+```
+
+render: function (createElement) {
+  return createElement('div', [
+    createElement('child', {
+      // pass `scopedSlots` in the data object
+      // in the form of { name: props => VNode | Array<VNode> }
+      scopedSlots: {
+        default: function (props) {
+          return createElement('span', props.text)
+        }
+      }
+    })
+  ])
+}
+```
+
+## JSX
+
+Si estás escribiendo muchas funciones de render, puede resultar doloroso escribir algo como esto: 
+
+JS
+```
+
+createElement(
+  'anchored-heading', {
+    props: {
+      level: 1
+    }
+  }, [
+    createElement('span', 'Hello'),
+    ' world!'
+  ]
+)
+
+```
+
+Especialmente cuando la versión de la plantilla es tan simple en comparación:
+
+HTML
+
+```
+
+<anchored-heading :level="1">
+  <span>Hello</span> world!
+</anchored-heading>
+```
+
+Por eso hay un plugin de Babel para usar JSX con Vue, que nos devuelve a una sintaxis más cercana a las plantillas: 
+
+JS
+```
+import AnchoredHeading from './AnchoredHeading.vue'
+
+new Vue({
+  el: '#demo',
+  render: function (h) {
+    return (
+      <AnchoredHeading level={1}>
+        <span>Hello</span> world!
+      </AnchoredHeading>
+    )
+  }
+})
+
+
+```
+
+## Componentes funcionales
+
+El componente de encabezado anclado que creamos anteriormente es relativamente simple. No maneja ningún estado, mira cualquier estado que se le haya pasado, y no tiene métodos de ciclo de vida. En realidad, es sólo una función con algunos accesorios.
+
+En casos como este, podemos marcar los componentes como `functional`, lo que significa que son sin estado (sin datos reactivos) y sin instinto (sin `this` contexto). Un componente funcional tiene este aspecto: 
+
+JS
+
+```
+
+Vue.component('my-component', {
+  functional: true,
+  // Props are optional
+  props: {
+    // ...
+  },
+  // To compensate for the lack of an instance,
+  // we are now provided a 2nd context argument.
+  render: function (createElement, context) {
+    // ...
+  }
+})
+
+```
+
+En 2. 5. 0+, si está utilizando componentes de un solo archivo, los componentes funcionales basados en plantillas se pueden declarar con: 
+
+HTML
+
+```
+<template functional>
+</template>
+```
+
+Todo lo que el componente necesita se pasa a través del `context`, que es un objeto que contiene:
+
+1. props: Un objeto de los props proporcionados
+2. children: Una selección de los children VNode
+3. slots: Una función que devuelve un objeto de slots
+4. scopedSlots: (2. 6. 0+) Un objeto que expone slot de alcance pasado. También expone los slots normales como funciones.
+5. data: El objeto de datos completo, pasado al componente como segundo argumento de createElement
+6. parent: Una referencia al componente padre
+7. listeners: (2. 3. 0+) Un objeto que contiene oyentes de eventos registrados por los padres. Este es un alias de data.on
+8. inyecciones: (2. 3. 0+) si utiliza la opción de inject, ésta contendrá inyecciones resueltas.
+
+Después de añadir `funcional: true`, actualizar la función de render de nuestro componente de encabezado anclado requeriría añadir el argumento `context`, actualizar `this.$slots.default` a `context.children`, y luego actualizar `this.nivel` a `context.props.level`.
+
+Dado que los componentes funcionales son sólo funciones, es mucho más barato renderizarlos.
+
+También son muy útiles como componentes de envoltura. Por ejemplo, cuando sea necesario:
+
+1. Elegir programáticamente uno de los otros componentes en los que delegar
+2. Manipular hijos, objetos de utilería o datos antes de pasarlos a un componente hijo.
+
+He aquí un ejemplo de un componente de `smart-list` que se delega a componentes más específicos, dependiendo de los accesorios que se le pasen: 
+
+JS
+
+```
+var EmptyList = { /* ... */ }
+var TableList = { /* ... */ }
+var OrderedList = { /* ... */ }
+var UnorderedList = { /* ... */ }
+
+Vue.component('smart-list', {
+  functional: true,
+  props: {
+    items: {
+      type: Array,
+      required: true
+    },
+    isOrdered: Boolean
+  },
+  render: function (createElement, context) {
+    function appropriateListComponent () {
+      var items = context.props.items
+
+      if (items.length === 0)           return EmptyList
+      if (typeof items[0] === 'object') return TableList
+      if (context.props.isOrdered)      return OrderedList
+
+      return UnorderedList
+    }
+
+    return createElement(
+      appropriateListComponent(),
+      context.data,
+      context.children
+    )
+  }
+})
+
+
+```
+
+### Transmisión de atributos y eventos a los elementos/componentes Hijos 
+
+En componentes normales, los atributos no definidos como props se añaden automáticamente al elemento raíz del componente, reemplazando o fusionándose inteligentemente con cualquier atributo existente del mismo nombre.
+
+Sin embargo, los componentes funcionales requieren que defina explícitamente este comportamiento: 
+
+JS
+
+```
+Vue.component('my-functional-button', {
+  functional: true,
+  render: function (createElement, context) {
+    // Transparently pass any attributes, event listeners, children, etc.
+    return createElement('button', context.data, context.children)
+  }
+})
+
+```
+
+Al pasar `context.data` como segundo argumento para `createElement`, estamos pasando todos los atributos o eventos de los oyentes utilizados en el `my-functional-button`. Es tan transparente, de hecho, que los eventos ni siquiera requieren el modificador `.native`.
+
+Si está utilizando componentes funcionales basados en plantillas, también tendrá que añadir manualmente atributos y oyentes. Como tenemos acceso a los contenidos de contexto individuales, podemos usar `data.attrs` para pasar cualquier atributo HTML y los `listeners` (el alias de `data.on`) para pasar a los oyentes de cualquier evento. 
+
+HTML
+
+```
+
+<template functional>
+  <button
+    class="btn btn-primary"
+    v-bind="data.attrs"
+    v-on="listeners"
+  >
+    <slot/>
+  </button>
+</template>
+
+```
+
+### slots() vs children
+
+
+Usted se preguntará por qué necesitamos tanto slots() como children. ¿No sería `slots().default` lo mismo que `children`? En algunos casos, sí, pero ¿qué pasa si tiene un componente funcional con los siguientes children?
+
+HTML
+
+```
+<my-functional-component>
+  <p v-slot:foo>
+    first
+  </p>
+  <p>second</p>
+</my-functional-component>
+
+```
+
+Para este componente, los hijos le darán ambos párrafos, `slot().default` le dará sólo el segundo, y `slots().foo` le dará sólo el primero. Por lo tanto, tener tanto hijos como slots() le permite elegir si este componente sabe de un sistema de slots o quizás delegar esa responsabilidad a otro componente pasando a los hijos. 
+
+
+
+###
+
+Meta
+
+## Comparación con otros Frameworks ##
+
+Esta es la página más compleja de escribir pero sinceramente es de gran importancia. Probablemente has tenido problemas que has intentado resolver y has usado otra libreria para resolverlos. LLegaste aquí por que quieres saber si puedes resolver tu problema en particular de una mejor manera. Es lo que aquí deseamos responderte.
+
+También intentamos totalmente evitar prejuicios. Como el corazón del equipo, nos encanta demasiado Vué. Existen algunos problemas en los que pensamos que se resuelven de una mejor manera. Si no lo creemos de esa manera, no podriamos estar trabajando en ello. Sin embargo queremos ser justos y precisos. En donde otras librerías ofrecen avances significativos, como el vasto ecosistema de alternativas para el renderizado de React, de todas maneras  trataremos de enlistarlas.
+
+## React
+
+React y Vue comparten muchas similaridades, entre ellas mencionamos:
+
+1. Utiliza un virtual DOM
+2. Provee componentes de vista reactivos y compuestos.
+3. Se enfoca en el nucleo de la librería, atendiendo aspectos como el enrutamiento y la gestión global de estado dirigidas por librerías guías.
+
+Siendo tán similares a la vista, hicimos mayor énfasis en esta comparación que cualquier otra. Queremos garantizar no solo la presición técnica, sino también el balance. Señalamos donde React supera a Vue, por ejemplo en lo rico de sus ecosistemas y la variedad en la personalización de sus renderizados.
+
+Al decir esto, es inevitable que la comparación pudiera parecer en favor de los usuarios de Vue, pero muchos de los puntos que aquí se tocan son muy subjetivos. Sabemos de la existencia de varios aspectos tecnicos y en primer lugar, en esta comparación intenta resaltar las razones del por que Vue pudiera convenir más si tus preferencias coinciden con las nuestras.
+
+Algunas de las próximas secciones pudieran ser un poco anticuadas debido a las recientes actualizaciones en React 16+ y nuestra intensión es trabajar con la comunidad de React para actualizar esta sección en el futuro cercano.
+
+----------------------
+
+Migrando desde Vue 1.x
+
+### ¿A partir de donde deberiamos migrar?
+
+1. Inicia usando el ayudante para la migración en un proyecto actual. Nosotros cuidadosamente hemos reducido y simplificado desarrollos complejos en una línea de comandos simple. En el momento en el que se reconozca una característica obsoleta, se te notificará ofreciendo sugerencias y dando links para mayor información.
+
+2. En caso de que la ayuda para la migración no sea precisa, puedes buscar  a través de la tabla de contenidos de esta página.
+
+3. Si tienes algunas versiones no oficiales, correlas y observa si las fallas continuan. En caso de no tenerlas, simplemente abre la aplicación en tu navegador y visualiza alertas o errores al navegar a través de ella.
+
+4. En este punto, tu aplicación debería haber migrado completamente. Sin embargo si se desea mayor información, puedes continuar leyendo esta página o puedes explorar la nueva y mejorada guia desde el inicio. Muchas de las partes se podrían saltar si ya estas familiarizado con los conceptos básicos.
+
+###  ¿Cuanto tomaría la migración de una aplicación de Vue 1.x a 2.x?
+
+Dependiendo de algunos factores:
+
+1. El tamaño de tu aplicación
+
+2. Cuantas veces te distraes jugando con las nuevas características interesantes. Sin juzgar, también nos sucede mientras construimos la 2.0!
+
+3. Cual de las viejas caraterísticas estas usando. La mayoría puede ser actualizada con una simple "busqueda y remplazo" pero otras podrían tomar algunos cuantos minutos. Si actualmente no estas siguiendo las buenas prácticas, Vue 2.0 intentará obligarte incanzablemente a ello. Esto pudiera ser bueno pero también se convertiría en un factor influyente.
+
+### Si actualizo a Vue 2, tendré también que actualizar Vuex y Vue Router?
+
+Vue Router 2 solamente es compatible con Vue 2, por lo que tendrás que seguir los pasos de migración para Vue Router. Afortunadamente la mayoría de las aplicaciones no tienen una gran cantidad de codigo router, por lo tanto no nos tomará más de una hora.
+
+Con respecto a Vuex, incluso la versión 0.8 es compatible con Vue 2.0, por lo que no te verás obligado a actualizar. La unica razón por la que querras actualizar automaticamente is para dar paso a los avances de las nuevas características in Vuex 2, como los modulos.
+
+## Plantillas
+
+### Instancias fragmentas Removed
+
+Cada componente debe tener exactamente un elemento raíz. Las instancias fragmentas ya no son permitidas. Si se tiene una plantilla como acontinuación:
+
+HTML
+
+```
+<p>foo</p>
+<p>bar</p>
+``` 
+
+Es recomendable encerrar todo el contenido en un nuevo elemento, como acontinuación:
+
+HTML
+
+```
+<div>
+  <p>foo</p>
+  <p>bar</p>
+</div>
+```
+
+Ruta Mejorada
+Corre de principio a fin tu prototipo o aplicación después realizar mejoras y observa las alertas de la consola sobre los multiples elementos raices en una plantilla.
+
+## Ciclo de vida del Hooks
+
+### `beforeCompile` removed
+
+Usa el hook `created` en su lugar. 
+
+Mejor Ruta: Consulta la ayuda de migración sobre tu código base para encontrar todos los ejemplos de este hook.
+
+### `Compiled` replaced
+
+En su lugar usa el nuevo hook `mounted`.
+
+Mejor Ruta: Consulta al ayudante de migración sobre tu código base para encontrar todos los ejemplos sobre este hook.
+
+### `attached` removed
+
+Usa un in-DOM check particular en otros hook. Por ejemplo, para reemplazar:
+
+JS
+```
+attached: function () {
+  doSomething()
+}
+```
+
+Podrías usar:
+
+JS
+```
+mounted: function () {
+  this.$nextTick(function () {
+    doSomething()
+  })
+}
+```
+
+Mejor Ruta: Consulta al ayudante de migración sobre tu código base para encontrar todos los ejemplos sobre este hook.
+
+### `detached` removed
+
+Usa un in-DOM check particular en otros hook. Por ejemplo, para reemplazar:
+
+JS
+```
+detached: function () {
+  doSomething()
+}
+```
+
+Podrías usar:
+JS
+```
+destroyed: function () {
+  this.$nextTick(function () {
+    doSomething()
+  })
+}
+```
+
+Mejor Ruta: Consulta el ayudante de migración sobre tu código base para encontrar todos los ejemplos de este hook.
+
+### `init` renamed
+
+En su lugar usa el nuevo hook `beforeCreate`, el cual es esencialmente  la misma cosa. Fue renombrado por consistencia con otros ciclos vítales de métodos.
+
+Ruta Mejorada: Consulta el ayudante de migración sobre tu código base para encontrar todos los ejemplos sobre este hook.
+
+### `ready` replaced
+
+En su lugar usa el nuevo hook `mounted`. Sin embargo debe notarse que con `mounted`, no hay garantia de ser documentado. Por ello, incluye también `Vue.nextTick` / `vm.$nextTick`. Por ejemplo:
+
+JS
+```
+mounted: function () {
+  this.$nextTick(function () {
+    // code that assumes this.$el is in-document
+  })
+}
+```
+
+Ruta Mejorada: Consulta el ayudante de migración sobre tu codigo base para encontrar todos los ejemplos de este hook.
+
+## `v-for`
+
+### `v-for` Argument Order for Arrays changed
+
+Al incluir `index`, el orden usado del argumento para el array será `(index,value)`. Es ahora `(value,index)` para ser más consistente con los métodos de arreglo nativo de JavaScript como `forEach` y `map`.
+
+Ruta Mejorada: Consulta el ayudante de migración sobre tu código base para encontrar ejemplos del orden de los argumentos obsoletos. Observa que si nombras tu argumentos principales de una manera inusual como `position` o `num`, el ayudante no lo resaltará.
+
+### `v-for` Argument Order for Objects changed
+
+Cuando se incluye un nombre propio o clave 
+propia, el orden de los argumentos usados para los objetos será `(name, value)`. Es ahora `(value, name)` para ser más consistente con la iteración de los objetos comunes como lodash's.
+
+Ruta Mejorada: Consulta el ayudante de migración sobre tu código base para encontrar ejemplos del orden de argumentos obsoletos. Observa que si nombras tus argumentos claves como `name` o `property`, el ayudante no lo resaltará.
+
+### `$index` and `$key` removed
+
+Las variables implicitas asignadas `$index` y `$key` han sido removidas en favor de definirlas explicitamente en `v-for`. Esto simplifica el código para los desarrolladores menos experimentados con Vue y también resulta en un comportamiento más claro al tratar con lazos anidados.
+
+Ruta mejorada: Consulta con el ayudante de migración sobre tu código base para encontrar ejemplos de estas variables removidas. Si ignoras cualquiera de ellas, debes también consultar errores de consola como: `Uncaught ReferenceError: $index is not defined`
+
+### `track-by` replaced
+
+`track-by` ha sido reemplazado por `key`, el cual trabaja como cualquier otro atributo: sin el `v-bind:` or el prefijo `:`, es tratado como un string literal. En la mayoría de casos, querras usar un vinculo dinámico, el cual espera una expresión completa en vez de una clave. Por ejemplo, en lugar de: 
+
+HTML
+```
+<div v-for="item in items" track-by="id">
+```  
+
+Escribiremos ahora:
+
+HTML
+```
+<div v-for="item in items" v-bind:key="item.id">
+```
+
+Ruta Mejorada: Consulta el ayudante de migración en tu código base para encontrar ejemplos de `track-by`
+
+### `v-for` Range Values changed
+
+Anteriormente, `v-for="number in 10"` tendría `number` iniciando en 0 y finalizando en 9. Ahora inicia en 1 y finaliza en 10.
+
+Ruta Mejorada: Busca en tu código base la expresión regular `/\w+ in \d+/`. Donde sea que aparezca en un `v-for`, confirma si pudiera verse afectado.
+
+## Props
+
+### `coerce` Prop Option removed
+
+Si quieres coaccionar un prop, establece un valor de computo local basado en él en su lugar. Por ejemplo, en su lugar:
+
+JS
+```
+props: {
+  username: {
+    type: String,
+    coerce: function (value) {
+      return value
+        .toLowerCase()
+        .replace(/\s+/, '-')
+    }
+  }
+}
+```
+
+Podrías escribir:
+
+JS
+```
+props: {
+  username: String,
+},
+computed: {
+  normalizedUsername: function () {
+    return this.username
+      .toLowerCase()
+      .replace(/\s+/, '-')
+  }
+}
+```
+
+Existen algunas ventajas:
+
+1. Continuas teniendo acceso al valor original de el prop.
+
+2. Estas obligado a ser más explicito, al dar un nombre a tu valor coaccionado que lo diferencie de el valor pasado en el prop.
+
+Ruta Mejorada: Consulta el ayudante de migración sobre tu código base para encontrar ejemplos de la opción `coerce`.
+
+### `twoWay` Prop Option removed
+
+Los Props están ahora siempre en una sola dirección. Para producir efectos colaterales en el patrón de alcance, un componente necesita para emitir explicitamente un evento en vez de confiar en vinculaciones implicitas.
+
+### `.once` and `.sync` Modifiers on `v-bin` removed
+
+Los Props están ahora siempre en una sola dirección. Para producir efectos colaterales en el patrón de alcance, un componente necesita para emitir explicitamente un evento en vez de confiar en vinculaciones implicitas.
+
+### Prop Mutation deprecated
+
+La mutación del prop localmente esta ahora considerado un anti-patron, por ejemplo, declarando un prop y luego estableciendo `this.myProp = 'someOtherValue'` en el componente. Debido al nuevo mecanismo de renderizado, 
