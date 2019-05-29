@@ -5638,11 +5638,992 @@ HTML
 
 Para este componente, los hijos le darán ambos párrafos, `slot().default` le dará sólo el segundo, y `slots().foo` le dará sólo el primero. Por lo tanto, tener tanto hijos como slots() le permite elegir si este componente sabe de un sistema de slots o quizás delegar esa responsabilidad a otro componente pasando a los hijos. 
 
+## Plantillas de Compilación
 
 
-###
+Puede que le interese saber que las plantillas de Vue se compilan para renderizar funciones. Este es un detalle de implementación que normalmente no necesita conocer, pero si desea ver cómo se compilan las características específicas de las plantillas, puede que le resulte interesante. Abajo hay una pequeña demostración usando `Vue.compile` para compilar una cadena de plantillas en vivo: 
 
-Meta
+[ver ejemplo en TEMPLATE COMPILATION](https://vuejs.org/v2/guide/render-function.html)
+
+## Plugins
+
+Los plugins usualmente agregan niveles globales a "vue". 
+No hay un alcance estrictamente definido para un plugin - típicamente hay varios tipos de plugins: 
+
+1. Agregar algunos métodos o propiedades globales. Por ejemplo: `.vue-custom-element`
+
+2. Añadir uno o más activos globales: directivas/filtros/transiciones, etc. Por ejemplo: `.vue-touch`
+
+3. Agregue algunas opciones de componentes por mezcla global. Por ejemplo, `vue-router`
+
+4. Añada algunos métodos de instancia de Vue adjuntándolos a Vue.prototype.
+
+5. Una librería que proporciona una API propia, mientras que al mismo tiempo inyecta alguna combinación de las anteriores, por ejemplo: `vue-router` 
+
+## Usando un plugin
+
+Usando por la llamada del metodo global `Vue.use()`. 
+
+Eso tiene que hacerse antes de iniciar su aplicación llamado `new Vue()` :
+
+JS
+
+```
+// calls `MyPlugin.install(Vue)`
+Vue.use(MyPlugin)
+
+new Vue({
+  //... options
+})
+
+```
+
+Se puede opcionalmente pasar algunas opciones: 
+
+JS
+
+```
+Vue.use(MyPlugin, { someOption: true })
+
+```
+
+`Vue.use` automáticamente le impide usar el mismo plugin más de una vez, por lo que si lo llama varias veces en el mismo plugin, éste se instalará sólo una vez.
+
+Algunos plugins proporcionados por los plugins oficiales de `Vue.js`, como `vue-router`, llaman automáticamente a `Vue.use()` si `Vue` está disponible como una variable global. Sin embargo, en un entorno de módulo como CommonJS, siempre es necesario llamar a `Vue.use()` explícitamente: 
+
+JS
+
+```
+// When using CommonJS via Browserify or Webpack
+var Vue = require('vue')
+var VueRouter = require('vue-router')
+
+// Don't forget to call this
+Vue.use(VueRouter)
+
+```
+
+
+
+
+## Escribiendo un plugin
+
+Un plugin `Vue.js` debería exponer un método de `install`. El método se llamará con el constructor de `Vue` como primer argumento, junto con las opciones posibles: 
+
+JS
+
+```
+
+MyPlugin.install = function (Vue, options) {
+  // 1. add global method or property
+  Vue.myGlobalMethod = function () {
+    // some logic ...
+  }
+
+  // 2. add a global asset
+  Vue.directive('my-directive', {
+    bind (el, binding, vnode, oldVnode) {
+      // some logic ...
+    }
+    ...
+  })
+
+  // 3. inject some component options
+  Vue.mixin({
+    created: function () {
+      // some logic ...
+    }
+    ...
+  })
+
+  // 4. add an instance method
+  Vue.prototype.$myMethod = function (methodOptions) {
+    // some logic ...
+  }
+}
+
+```
+
+### Filtros
+
+
+`Vue.js` le permite definir filtros que se pueden utilizar para aplicar el formato de texto común. Los filtros se pueden usar en dos lugares: interpolaciones de bigote y expresiones `v-bind` (estas últimas soportadas en 2.1.0+). Los filtros deben añadirse al final de la expresión JavaScript, señalados con el símbolo "pipe"
+
+```
+<!-- in mustaches -->
+{{ message | capitalize }}
+
+<!-- in v-bind -->
+<div v-bind:id="rawId | formatId"></div>
+
+```
+
+Puede definir filtros locales en las opciones de un componente: 
+
+JS
+
+```
+
+filters: {
+  capitalize: function (value) {
+    if (!value) return ''
+    value = value.toString()
+    return value.charAt(0).toUpperCase() + value.slice(1)
+  }
+}
+
+```
+
+O definir globalmente un filtro antes de la creación de la instancia del Vue:
+
+
+JS
+
+```
+Vue.filter('capitalize', function (value) {
+  if (!value) return ''
+  value = value.toString()
+  return value.charAt(0).toUpperCase() + value.slice(1)
+})
+
+new Vue({
+  // ...
+})
+
+
+```
+
+Este ejemplo es un filtro de nuestro `capitalize` siendo usado:
+
+[ver ejemplo filters](https://vuejs.org/v2/guide/filters.html)
+
+
+
+La función de filtro siempre recibe el valor de la expresión (el resultado de la cadena anterior) como su primer argumento. En el ejemplo anterior, la función de filtro `capitalizer` recibirá el valor de mensaje como argumento. 
+
+Los filtros se pueden encadenar
+
+HTML
+
+```
+{{ message | filterA | filterB }}
+
+```
+
+En este caso, `filterA`, definido con un argumento simple, recibirá el valor de `message`, y luego la función del `filterB` será llamada con el resultado de paso de `filterA` dentro del argumento del `filterB` 
+
+
+Los filtros son funciones de javascript, ademas ellos pueden tomar argumentos:
+
+HTML
+
+```
+{{ message | filterA('arg1', arg2) }}
+
+```
+
+Aquí el `filtroA` se define como una función que toma tres argumentos. El valor del `message` se pasará al primer argumento. El string 'arg1'; pasará al `filtroA` como segundo argumento, y el valor de la expresión `arg2` será evaluado y transmitido como tercer argumento. 
+
+## Herramientas ##
+
+### Componentes de archivos simples
+
+
+
+En muchos proyectos de Vue, los componentes globales se definirán utilizando `Vue.component`, seguido de un `new Vue ({ el: '#container' })` para dirigirse a un elemento contenedor en el cuerpo de cada página.
+
+Esto puede funcionar muy bien para proyectos pequeños y medianos, donde JavaScript sólo se utiliza para mejorar ciertas vistas. Sin embargo, en proyectos más complejos, o cuando su interfaz está totalmente impulsado por JavaScript, estas desventajas se hacen evidentes:
+
+1. Las definiciones globales fuerzan la creación de nombres únicos para cada componente
+2. Las plantillas de string carecen de resaltado de sintaxis y requieren barras oblicuas para HTML multilínea.
+3. La ausencia de soporte para CSS significa que mientras que HTML y JavaScript están modulados en componentes, CSS se omite visiblemente.
+4. Ningún paso de compilación nos restringe a HTML y ES5 JavaScript, en lugar de preprocesadores como Pug (antes Jade) y Babel.
+
+Todo esto se resuelve con componentes de un solo archivo con extensión `.vue`, que son posibles gracias a herramientas de construcción como Webpack o Browserify.
+
+[He aquí un ejemplo de un archivo que llamaremos Hello. vue:](https://vuejs.org/v2/guide/single-file-components.html)
+
+
+
+
+
+HTML
+
+```
+<!-- my-component.vue -->
+<template>
+  <div>This will be pre-compiled</div>
+</template>
+<script src="./my-component.js"></script>
+<style src="./my-component.css"></style>
+
+```
+
+
+### ¿Qué pasa con la separación de asuntos?
+
+Una cosa importante a tener en cuenta es que la separación de asuntos no es igual a la separación de tipos de archivos. En el desarrollo moderno de la interfaz de usuario, hemos encontrado que en lugar de dividir la base de código en tres grandes capas que se entrelazan entre sí, tiene mucho más sentido dividirlas en componentes sueltos y componerlas. Dentro de un componente, su plantilla, lógica y estilos están intrínsecamente acoplados, y la colocación de los mismos hace que el componente sea más cohesivo y mantenible.
+
+Incluso si no le gusta la idea de los componentes de un solo archivo, puede aprovechar sus funciones de recarga en caliente y precompilación separando su JavaScript y CSS en archivos separados:
+
+HTML
+
+```
+<!-- my-component.vue -->
+<template>
+  <div>This will be pre-compiled</div>
+</template>
+<script src="./my-component.js"></script>
+<style src="./my-component.css"></style>
+
+```
+
+## Pruebas de unidad
+
+
+### Simples afirmaciones
+
+No se tiene que hacer nada especial en sus componentes para hacerlos comprobables:
+
+HTML
+
+```
+<template>
+  <span>{{ message }}</span>
+</template>
+
+<script>
+  export default {
+    data () {
+      return {
+        message: 'hello!'
+      }
+    },
+    created () {
+      this.message = 'bye!'
+    }
+  }
+</script>
+
+```
+
+
+JS 
+
+
+```
+// Import Vue and the component being tested
+import Vue from 'vue'
+import MyComponent from 'path/to/MyComponent.vue'
+
+// Here are some Jasmine 2.0 tests, though you can
+// use any test runner / assertion library combo you prefer
+describe('MyComponent', () => {
+  // Inspect the raw component options
+  it('has a created hook', () => {
+    expect(typeof MyComponent.created).toBe('function')
+  })
+
+  // Evaluate the results of functions in
+  // the raw component options
+  it('sets the correct default data', () => {
+    expect(typeof MyComponent.data).toBe('function')
+    const defaultData = MyComponent.data()
+    expect(defaultData.message).toBe('hello!')
+  })
+
+  // Inspect the component instance on mount
+  it('correctly sets the message when created', () => {
+    const vm = new Vue(MyComponent).$mount()
+    expect(vm.message).toBe('bye!')
+  })
+
+  // Mount an instance and inspect the render output
+  it('renders the correct message', () => {
+    const Constructor = Vue.extend(MyComponent)
+    const vm = new Constructor().$mount()
+    expect(vm.$el.textContent).toBe('bye!')
+  })
+})
+
+```
+
+
+
+### Escribiendo componentes de prueba
+
+La salida de render de un componente está determinada principalmente por los props que recibe. Si la salida de render de un componente depende únicamente de sus props, se convierte en algo sencillo de probar, similar a afirmar el valor de retorno de una función con argumentos diferentes. Tomemos un ejemplo simplificado: 
+
+HTML
+
+```
+<template>
+  <p>{{ msg }}</p>
+</template>
+
+<script>
+  export default {
+    props: ['msg']
+  }
+</script>
+
+
+```
+
+Con diferentes props usando la opción `propsData`:
+
+JS
+
+```
+
+import Vue from 'vue'
+import MyComponent from './MyComponent.vue'
+
+// helper function that mounts and returns the rendered text
+function getRenderedText (Component, propsData) {
+  const Constructor = Vue.extend(Component)
+  const vm = new Constructor({ propsData: propsData }).$mount()
+  return vm.$el.textContent
+}
+
+describe('MyComponent', () => {
+  it('renders correctly with different props', () => {
+    expect(getRenderedText(MyComponent, {
+      msg: 'Hello'
+    })).toBe('Hello')
+
+    expect(getRenderedText(MyComponent, {
+      msg: 'Bye'
+    })).toBe('Bye')
+  })
+})
+
+```
+
+### Actualizaciones asincronas afirmadas
+
+Las actualizaciones en el DOM debera realizarse dentro de un callback `Vue.nextTick`
+
+JS
+```
+
+// Inspect the generated HTML after a state update
+it('updates the rendered message when vm.message updates', done => {
+  const vm = new Vue(MyComponent).$mount()
+  vm.message = 'foo'
+
+  // wait a "tick" after state change before asserting DOM updates
+  Vue.nextTick(() => {
+    expect(vm.$el.textContent).toBe('foo')
+    done()
+  })
+})
+
+```
+
+## Soporte TypeScript
+
+### Declaraciones oficial en paquetes NPM
+
+Un sistema tipo estatico puede ayudar a prevenir muchos errores de corridas, especialmente como aplicaciones en crecimiento.
+
+### Configuraciones recomendadas
+
+JS
+
+```
+// tsconfig.json
+{
+  "compilerOptions": {
+    // this aligns with Vue's browser support
+    "target": "es5",
+    // this enables stricter inference for data properties on `this`
+    "strict": true,
+    // if using webpack 2+ or rollup, to leverage tree shaking:
+    "module": "es2015",
+    "moduleResolution": "node"
+  }
+}
+
+
+```
+
+
+Se debe incluir `strict: true `(ó al menos `noImplicitThis: true` la cual es una parte de la bandera `strict`) para aprovechar la comprobación del `this` en los métodos de componentes, de lo contrario siempre se tratará como de cualquier tipo. 
+
+### Herramientas de desarrollo
+
+### Creación del proyecto
+
+Podemos generar nuevos proyectos con el uso de TypeScript:
+
+
+Shell
+```
+# 1. Install Vue CLI, if it's not already installed
+npm install --global @vue/cli
+
+# 2. Create a new project, then choose the "Manually select features" option
+vue create my-project-name
+```
+
+
+### Editor de soportes
+
+Para desarrolar aplicaciones Vue con typescript, se recomienda usar Visual Studio Code, la cual provee grandes suportes para Type Script.
+
+### Usos básicos
+
+Se necesita definir componentes con `Vue.component` ó `Vue.extend`:
+
+JS
+
+```
+import Vue from 'vue'
+
+const Component = Vue.extend({
+  // type inference enabled
+})
+
+const Component = {
+  // this will NOT have type inference,
+  // because TypeScript can't tell this is options for a Vue component.
+}
+
+```
+
+### Clases y estilos de Vue Components
+
+Si se requiere que la API este basada en una clase, se puede realizar el siguiente decorador de vue-class-component
+
+JS
+
+```
+import Vue from 'vue'
+import Component from 'vue-class-component'
+
+// The @Component decorator indicates the class is a Vue component
+@Component({
+  // All component options are allowed in here
+  template: '<button @click="onClick">Click!</button>'
+})
+export default class MyComponent extends Vue {
+  // Initial data can be declared as instance properties
+  message: string = 'Hello!'
+
+  // Component methods can be declared as instance methods
+  onClick (): void {
+    window.alert(this.message)
+  }
+}
+
+```
+
+## Tipos de ampliación para el uso con plugins
+
+Los plugins pueden agregar propiedades a la instancia global de Vue y opciones de componentes. En este caso la declaración son necesarias para compilar el plugins. En typeScript tenemos module augmentation o modulo de ampliación:
+
+
+Para declarar la propiedad de la instancia `$myProperty` de tipo string:
+
+
+JS
+
+```
+// 1. Make sure to import 'vue' before declaring augmented types
+import Vue from 'vue'
+
+// 2. Specify a file with the types you want to augment
+//    Vue has the constructor type in types/vue.d.ts
+declare module 'vue/types/vue' {
+  // 3. Declare augmentation for Vue
+  interface Vue {
+    $myProperty: string
+  }
+}
+
+```
+
+Despues se incluirá el código como una declaración de archivos en su proyecto `my-property.s.ts` , se puede usar  `$myProperty` en una instancia de Vue.
+
+JS
+
+```
+var vm = new Vue()
+console.log(vm.$myProperty) // This should compile successfully
+
+```
+
+Tambien se puede declarar propiedades globales y opciones de componentes:
+
+JS
+```
+import Vue from 'vue'
+
+declare module 'vue/types/vue' {
+  // Global properties can be declared
+  // on the `VueConstructor` interface
+  interface VueConstructor {
+    $myGlobal: string
+  }
+}
+
+// ComponentOptions is declared in types/options.d.ts
+declare module 'vue/types/options' {
+  interface ComponentOptions<V extends Vue> {
+    myOption?: string
+  }
+}
+
+```
+Esto permite compilar el siguiente código:
+
+JS
+```
+
+
+// Global property
+console.log(Vue.$myGlobal)
+
+// Additional component option
+var vm = new Vue({
+  myOption: 'Hello'
+})
+
+```
+
+### Tipos de anotación retorno
+
+Typescript puede tener dificultades para inferir en los tipos de metodos acertados.Por esta razon, se necesita anotar el tipo de retorno en los metodos como `render` y estos en `computed`.
+
+JS
+
+```
+
+import Vue, { VNode } from 'vue'
+
+const Component = Vue.extend({
+  data () {
+    return {
+      msg: 'Hello'
+    }
+  },
+  methods: {
+    // need annotation due to `this` in return type
+    greet (): string {
+      return this.msg + ' world'
+    }
+  },
+  computed: {
+    // need annotation
+    greeting(): string {
+      return this.greet() + '!'
+    }
+  },
+  // `createElement` is inferred, but `render` needs return type
+  render (createElement): VNode {
+    return createElement('div', this.greeting)
+  }
+})
+```
+## Despliegue de producción ##
+
+## Activar el modo de producción
+
+Durante el desarrollo, Vue proporciona una gran cantidad de advertencias para ayudarle con los errores y peligros más comunes. Sin embargo, estas cadenas o strings de advertencia se vuelven inútiles en la producción e incrementan el tamaño de la carga útil de su aplicación. Además, algunas de estas comprobaciones de advertencia tienen costes de tiempo de ejecución reducidos que pueden evitarse en el modo de producción.
+
+
+### Sin las herramientas de construcción
+
+
+Si estas usando el constructor completo, por ejemplo directamente incluyendo VUe una etiqueta script sin incluir una herramienta de contructor, se hace uso de la version minimizada de vue.min.js para la producción. Ambas versiones pueden ser encontradas en al [guia de instalación](https://vuejs.org/v2/guide/installation.html#Direct-lt-script-gt-Include).
+
+
+### Con las herramientas de construcción
+
+Cuando usamos una herramienta de compilación como Webpack ó Browserfy, el modo de producción será determinado por el `process.env.NODE_ENV` dentro del código fuente de Vue, y esto estará en modo de desarrollo por defecto. Ambas herramientas de compilación proporcionan formas de sobrescribir esta variable para habilitar el modo de producción de Vue, y las advertencias serán eliminadas por los minitransmisores durante la compilación. Todas las plantillas `vue-cli ` tienen estas pre-configuradas:
+
+*Webpack 4+*
+
+Se puede usar la opción `mode`:
+
+JS
+```
+module.exports = {
+  mode: 'production'
+}
+
+```
+
+Se necesitará para usar en Webpack3 `DefinePlugin`:
+
+JS
+```
+var webpack = require('webpack')
+
+module.exports = {
+  // ...
+  plugins: [
+    // ...
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify('production')
+    })
+  ]
+}
+```
+
+### Browserfy
+
+1. Ejecute el comando bundling con la variable de entorno `NODE_ENV` actual establecida en "producción". Esto le dice a `vueify` que evite incluir código relacionado con la recarga (hot-reload) y el desarrollo.
+
+2. Aplique una transformación `envify` global a su paquete. Esto permite al minificador eliminar todas las advertencias del código fuente de Vue envueltas en bloques condicionales env variables. Por ejemplo: 
+
+SHELL
+
+```
+NODE_ENV=production browserify -g envify -e main.js | uglifyjs -c -m > build.js
+```
+
+ó usando `envify` con Gulp:
+
+JS
+
+```
+// Use the envify custom module to specify environment variables
+var envify = require('envify/custom')
+
+browserify(browserifyOptions)
+  .transform(vueify)
+  .transform(
+    // Required in order to process node_modules files
+    { global: true },
+    envify({ NODE_ENV: 'production' })
+  )
+  .bundle()
+
+```
+
+Ó usando `envify` con Grunt y grunt-browserif:
+
+JS
+
+```
+
+// Use the envify custom module to specify environment variables
+var envify = require('envify/custom')
+
+browserify: {
+  dist: {
+    options: {
+      // Function to deviate from grunt-browserify's default order
+      configure: b => b
+        .transform('vueify')
+        .transform(
+          // Required in order to process node_modules files
+          { global: true },
+          envify({ NODE_ENV: 'production' })
+        )
+        .bundle()
+    }
+  }
+}
+
+```
+
+### Rollup
+
+Usando (rollup-plugin-replace)[https://github.com/rollup/rollup-plugin-replace]
+
+JS
+
+```
+
+const replace = require('rollup-plugin-replace')
+
+rollup({
+  // ...
+  plugins: [
+    replace({
+      'process.env.NODE_ENV': JSON.stringify( 'production' )
+    })
+  ]
+}).then(...)
+
+```
+
+## Ampliación ##
+
+## Router
+
+## Router simple desde SCRATCH
+
+Si solamente necesitas routeo simples y no deseas envolver características completas de la libreria del router, se puede renderizar dinamicamente componentes de page-level como:
+
+JS 
+
+```
+
+const NotFound = { template: '<p>Page not found</p>' }
+const Home = { template: '<p>home page</p>' }
+const About = { template: '<p>about page</p>' }
+
+const routes = {
+  '/': Home,
+  '/about': About
+}
+
+new Vue({
+  el: '#app',
+  data: {
+    currentRoute: window.location.pathname
+  },
+  computed: {
+    ViewComponent () {
+      return routes[this.currentRoute] || NotFound
+    }
+  },
+  render (h) { return h(this.ViewComponent) }
+})
+
+```
+
+## Gestionar Estados ##
+
+### Administración de estados simples desde Scratch
+
+A menudo se pasa por alto que la fuente de la verdad en las aplicaciones Vue es el objeto de la data sin tratar  - una instancia de Vue sólo da acceso a los proxys. Por lo tanto, si tienes un trozo de estado que debería ser compartido por múltiples instancias, puedes compartirlo por identidad: 
+
+JS
+
+```
+const sourceOfTruth = {}
+
+const vmA = new Vue({
+  data: sourceOfTruth
+})
+
+const vmB = new Vue({
+  data: sourceOfTruth
+})
+
+```
+
+Ahora siempre que `sourceOfTruth` es mutado, ambos `vmA` y `vmB` actualiza sus vistas automaticamente. Los subcomponentes dentro de cada instancia deberían tambien tener acceso via `this.$root.$data`. Tenemos una fuente unica de verdad, pero la depuración deberia ser tedioso.
+
+Ayudar a solventar este problema, nosotros podemos adoptar unos patrones de STORE:
+
+JS
+```
+
+var store = {
+  debug: true,
+  state: {
+    message: 'Hello!'
+  },
+  setMessageAction (newValue) {
+    if (this.debug) console.log('setMessageAction triggered with', newValue)
+    this.state.message = newValue
+  },
+  clearMessageAction () {
+    if (this.debug) console.log('clearMessageAction triggered')
+    this.state.message = ''
+  }
+}
+
+```
+
+Note que todas las acciones que mutan el estado del store son puestas dentro del mismo store. Este tipo de gestión centralizada del estado facilita la comprensión de qué tipo de mutaciones pueden ocurrir y cómo se desencadenan. Ahora, cuando algo va mal, también tendremos un registro de lo que ocurrió antes de que se produjera el error. 
+
+Además, cada instancia / componente puede poseer y gestionar su propio estado privado:
+
+
+JS
+
+```
+var vmA = new Vue({
+  data: {
+    privateState: {},
+    sharedState: store.state
+  }
+})
+
+var vmB = new Vue({
+  data: {
+    privateState: {},
+    sharedState: store.state
+  }
+})
+```
+
+## Server-Side Renderizado ##
+
+## Nuxt.js
+
+Configurar correctamente todos los aspectos discutidos de una aplicación lista para producción renderizada por el servidor puede ser una tarea desalentadora. Afortunadamente, hay un excelente proyecto comunitario que pretende hacer todo esto más fácil: [Nuxt.js](https://nuxtjs.org/). Nuxt.js es un framework de alto nivel construido sobre el ecosistema Vue que proporciona una experiencia de desarrollo extremadamente racionalizada para escribir aplicaciones universales Vue. Mejor aún, usted puede incluso usarlo como un generador estático de sitios (con páginas creadas como componentes Vue de un solo archivo)!
+
+
+
+## Framework Quasar SSR + PWA
+
+[Quasar Framework](https://quasar.dev/) generará una aplicación SSR (con entrega opcional de PWA) que aprovecha su sistema de construcción, configuración sensible y extensibilidad del desarrollador para hacer que el diseño y la construcción de su idea sea un juego de niños. Con más de cien componentes específicos compatibles con "Material Design 2.0", puede decidir cuáles desea ejecutar en el servidor, cuáles están disponibles en el navegador e incluso gestionar las etiquetas `<meta>` de su sitio. Quasar es un entorno de desarrollo basado en nodo.js y webpack que sobrecarga y agiliza el rápido desarrollo de aplicaciones SPA, PWA, SSR, Electron y Cordova, todo desde una misma base de código.
+
+
+## Reactividad en profundidad ##
+
+### Seguimiento de los cambios
+
+Cuando usted pasa un objeto JavaScript simple a una instancia de Vue como su opción de `data`, Vue marchará a través de todas sus propiedades y las convertirá en `getter/setters` usando `Object.defineProperty`. Esta es una característica exclusiva de ES5, por lo que Vue no es compatible con IE8 y versiones inferiores.
+
+Los `getter/setters` son invisibles para el usuario, pero bajo el hood permiten a Vue realizar el seguimiento de dependencias y la notificación de cambios cuando se accede a las propiedades o se modifican. Una advertencia es que las consolas de navegación formatean al `getter/setters` de forma diferente cuando se registran los objetos de datos convertidos, por lo que es posible que desee instalar `vue-devtools` para una interfaz más fácil de inspeccionar.
+
+Cada instancia de componente tiene una instancia de observador (watcher) correspondiente, que registra cualquier propiedad "touched" durante el renderizado del componente como dependencias. Más tarde, cuando se activa el `setter`, notifica al watcher, lo que hace a su vez que el componente vuelva a ejecutarse. 
+
+### Advertencia de detecciòn de cambios
+
+Debido a las limitaciones del JavaScript moderno (y al abandono de `Object. observe`), Vue no puede detectar la adición o eliminación de propiedades. Como Vue realiza el proceso de conversión `getter/setter` durante la inicialización de la instancia, una propiedad debe estar presente en el objeto de datos para que Vue lo convierta y lo haga reactivo. Por ejemplo: 
+
+
+JS
+```
+var vm = new Vue({
+  data: {
+    a: 1
+  }
+})
+// `vm.a` is now reactive
+
+vm.b = 2
+// `vm.b` is NOT reactive
+
+``` 
+
+Vue no permite añadir dinámicamente nuevas propiedades reactivas a nivel raíz a una instancia ya creada. Sin embargo, es posible añadir propiedades reactivas a un objeto anidado utilizando el método `Vue.set(object, propertyName, value)`: 
+
+JS
+```
+Vue.set(vm.someObject, 'b', 2)
+```
+
+Tambien puede usarse la instancia del metodo `vm.$set`, la cual es un alias global de `Vue.set`:
+
+JS
+```
+this.$set(this.someObject, 'b', 2)
+```
+
+A veces puede querer asignar un número de propiedades a un objeto existente, por ejemplo usando `Object.assign()` o `_. extend()`. Sin embargo, las nuevas propiedades añadidas al objeto no provocarán cambios. En tales casos, cree un objeto nuevo con propiedades tanto del objeto original como del objeto mixto: 
+
+JS
+
+```
+// instead of `Object.assign(this.someObject, { a: 1, b: 2 })`
+this.someObject = Object.assign({}, this.someObject, { a: 1, b: 2 })
+```
+
+### Declaración de propiedades reactivas
+
+Dado que Vue no permite añadir dinámicamente propiedades reactivas a nivel de raíz, debe inicializar las instancias de Vue declarando todas las propiedades de datos reactivos a nivel de raíz por adelantado, incluso con un valor vacío: 
+
+
+
+JS
+```
+var vm = new Vue({
+  data: {
+    // declare message with an empty value
+    message: ''
+  },
+  template: '<div>{{ message }}</div>'
+})
+// set `message` later
+vm.message = 'Hello!'
+
+```
+
+
+
+Si no declara el `message` en la opción de datos, Vue le advertirá que la función de render está intentando acceder a una propiedad que no existe.
+
+Hay razones técnicas detrás de esta restricción - elimina una clase de casos extremos en el sistema de seguimiento de dependencias, y también hace que las instancias de Vue sean más agradables con los sistemas de comprobación de tipos. Pero también hay una consideración importante en términos de mantenibilidad del código: el objeto de la `data` es como el esquema para el estado de su componente. Declarar todas las propiedades reactivas por adelantado hace que el código del componente sea más fácil de entender cuando se vuelve a visitar más tarde o es leído por otro desarrollador. 
+
+### Tráfico actualizado Asincrónico
+
+Vue realiza actualizaciones DOM de forma asíncrona. Siempre que se observe un cambio de datos, se abrirá una cola y se almacenarán en un búfer todos los cambios de datos que se produzcan en el mismo bucle de eventos. Si el mismo observador se activa varias veces, será empujado a la cola sólo una vez. Esta desduplicación tamponada es importante para evitar cálculos innecesarios y manipulaciones DOM. Luego, en el siguiente bucle de eventos "tic", Vue nivela o limpia la cola y realiza el trabajo actual (ya de-duplicado). Internamente Vue prueba `Promise.then`, `MutationObserver`, y `setImmediate` para la cola asíncrona y vuelve a `setTimeout(fn,0)`.
+
+Por ejemplo, cuando se define `vm.someData = new value'`, el componente no se volverá a procesar inmediatamente. Se actualizará en el siguiente "tic", cuando la cola se limpie. La mayoría de las veces no necesitamos preocuparnos por esto, pero puede ser difícil cuando quieres hacer algo que depende del estado de DOM posterior a la actualización. Aunque `Vue.js` generalmente anima a los desarrolladores a pensar de una manera "basada en datos" y evitar tocar el DOM directamente, a veces puede ser necesario ensuciarse las manos. Para esperar hasta que Vue.js haya terminado de actualizar el DOM después de un cambio de datos, puede utilizar `Vue.nextTick(callback)` inmediatamente después de cambiar los datos. La llamada de retorno se llamará después de que el DOM haya sido actualizado. Por ejemplo: 
+
+
+HTML
+
+```
+<div id="example">{{ message }}</div>
+
+```
+
+
+JS
+
+
+```
+var vm = new Vue({
+  el: '#example',
+  data: {
+    message: '123'
+  }
+})
+vm.message = 'new message' // change data
+vm.$el.textContent === 'new message' // false
+Vue.nextTick(function () {
+  vm.$el.textContent === 'new message' // true
+})
+
+
+```
+
+También está el método de instancia `vm.$nextTick()`, que es especialmente útil dentro de los componentes, ya que no necesita Vue global y su contexto del `this ` del callback's estará automáticamente vinculada a la instancia de Vue actual: 
+
+
+JS
+
+```
+
+Vue.component('example', {
+  template: '<span>{{ message }}</span>',
+  data: function () {
+    return {
+      message: 'not updated'
+    }
+  },
+  methods: {
+    updateMessage: function () {
+      this.message = 'updated'
+      console.log(this.$el.textContent) // => 'not updated'
+      this.$nextTick(function () {
+        console.log(this.$el.textContent) // => 'updated'
+      })
+    }
+  }
+})
+
+```
+
+Como `$nextTick()` devuelve una promesa, puede lograr lo mismo que lo anterior usando la nueva sintaxis async/wait de ES2016: 
+
+JS
+
+```
+methods: {
+  updateMessage: async function () {
+    this.message = 'updated'
+    console.log(this.$el.textContent) // => 'not updated'
+    await this.$nextTick()
+    console.log(this.$el.textContent) // => 'updated'
+  }
+}
+
+```
+
+## Meta ##
 
 ## Comparación con otros Frameworks ##
 
@@ -5903,3 +6884,4 @@ Los Props están ahora siempre en una sola dirección. Para producir efectos col
 ### Prop Mutation deprecated
 
 La mutación del prop localmente esta ahora considerado un anti-patron, por ejemplo, declarando un prop y luego estableciendo `this.myProp = 'someOtherValue'` en el componente. Debido al nuevo mecanismo de renderizado, 
+
