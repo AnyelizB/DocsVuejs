@@ -6885,3 +6885,35 @@ Los Props están ahora siempre en una sola dirección. Para producir efectos col
 
 La mutación del prop localmente esta ahora considerado un anti-patron, por ejemplo, declarando un prop y luego estableciendo `this.myProp = 'someOtherValue'` en el componente. Debido al nuevo mecanismo de renderizado, 
 
+## CONTENIDO ADICIONAL ##
+
+### MUTACIONES
+
+En vuex no puede llegar a una variable del estado y manipularla para que cambie directamente. Si hiciese esto, los componentes no reaccionarían al cambio. Debido a que la librería quiere seguir un sistema de flujo unidireccional, donde todas las fases se encuentren en un ciclo cerrado, deberemos usar un nuevo concepto conocido como mutaciones. Las mutaciones son aquellas funciones que se encargan de cambiar el valor de nuestro estado.
+
+Las mutaciones se comportan de igual manera que un evento. Una mutación cuenta con un tipo y un manejador que debe registrarse dentro de nuestro store. Cuando yo quiero hacer uso de esa mutación, solo tengo que invocarla.
+
+Igual que un evento.
+
+Para conseguir estas mutaciones, tenemos que registrarlas de la siguiente manera:
+
+```
+// store/index.js
+...
+
+export default new Vuex.Store({
+    state: {
+        count: 0,
+        gists: [],
+        user: {}
+    },
+    mutations: {
+        increment: function (state) {
+            state.count++
+        }
+    }
+};
+
+```
+
+[más información aquí](https://elabismodenull.wordpress.com/2017/06/05/vuejs-las-mutaciones-y-acciones-en-vuex/)
